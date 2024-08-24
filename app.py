@@ -154,6 +154,7 @@ navbar = dbc.Navbar(
                                         html.Img(src="/assets/edit-icon.png", height="20px", style={"margin-right": "5px"}),
                                         "Edit"
                                     ],
+                                    id="edit-button",  # Add id for the edit button
                                     color="light",
                                     className="mr-2",
                                     style={"color": "black"}  # Set text color to black
@@ -189,6 +190,28 @@ navbar = dbc.Navbar(
     className="mb-3",
 )
 
+# Modal for editing data
+edit_modal = dbc.Modal(
+    [
+        dbc.ModalHeader(dbc.ModalTitle("Edit Data")),
+        dbc.ModalBody(
+            dash_table.DataTable(
+                id='edit-table',
+                columns=[{"name": i, "id": i} for i in ['unique_id', 'OFFICE', 'FISCAL_YEAR', 'MONTH', 'SURVEY_GROUP', 'SOLD_TO', 'GLOBAL_CUSTOMER', 'SOLD_TO_NAME', 'FIRST_NAME', 'LAST_NAME', 'EMAIL', 'OVERALL_SATISFACTION', 'CUSTOMER_SERVICE_REPRESENTATIVE_SATISFACTION', 'EASE_OF_DOING_BUSINESS', 'ADDITIONNAL_COMMENTS', 'CUSTOMER_SATISFACTION_INDEX']],
+                editable=True,
+                row_deletable=True,
+                style_table={'overflowX': 'auto'},
+                style_cell={'textAlign': 'left', 'color': 'black'},
+            ),
+            style={"maxHeight": "60vh", "overflowY": "auto"}
+        ),
+        dbc.ModalFooter(
+            dbc.Button("Save Changes", id="save-changes", className="ml-auto")
+        ),
+    ],
+    id="edit-modal",
+    size="lg",
+)
 
 # Define the layout of the app
 app.layout = html.Div(
@@ -197,6 +220,7 @@ app.layout = html.Div(
         navbar,  # Add the navbar with the logo
         sidebar,  # Add the sidebar
         html.Div(id='output-data-upload'),
+        edit_modal,  # Add the edit modal
         html.Div(
             style={'padding': '20px'},  # Adjust the padding
             children=[
@@ -326,6 +350,39 @@ def update_output(contents, filename):
         children = parse_contents(contents, filename)
         return children
 
+# Combined callback to open the modal, load data, and save changes
+@app.callback(
+    Output("edit-modal", "is_open"),
+    Output("edit-table", "data"),
+    Input("edit-button", "n_clicks"),
+    Input("save-changes", "n_clicks"),
+    State("edit-modal", "is_open"),
+    State("edit-table", "data")
+)
+def toggle_modal_edit(edit_n_clicks, save_n_clicks, is_open, table_data):
+    ctx = callback_context
+
+    if not ctx.triggered:
+        return is_open, dash.no_update
+
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if button_id == "edit-button":
+        if edit_n_clicks:
+            # Load data from database
+            query = "SELECT * FROM data"
+            df = pd.read_sql(query, con=engine)
+            return not is_open, df.to_dict('records')
+        return is_open, dash.no_update
+    
+    elif button_id == "save-changes":
+        if save_n_clicks:
+            df = pd.DataFrame(table_data)
+            # Insert logic here to update the database with df
+            df.to_sql('DATA', con=engine, if_exists='replace', index=False)
+            return not is_open, dash.no_update
+    
+    return is_open, dash.no_update
 
 # Run the app
 if __name__ == '__main__':
