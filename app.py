@@ -3,15 +3,18 @@ import dash
 from dash import Dash, dcc, html, Input, Output, State, dash_table, callback_context
 import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
-from dash.dependencies import Input, Output, State
+from dash.dependencies import Input, Output, State, MATCH
 import pandas as pd
 import base64
 import io
+import datetime
 from sqlalchemy import create_engine
 from sqlalchemy import text
 
 # Initialize the Dash app
-app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
+app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY], suppress_callback_exceptions=True)
+
+app.config.suppress_callback_exceptions = True
 
 engine = create_engine('mssql+pyodbc://@localhost/CSIData?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes')
 
@@ -167,6 +170,7 @@ navbar = dbc.Navbar(
                                         html.Img(src="/assets/export-icon.png", height="20px", style={"margin-right": "5px"}),
                                         "Export"
                                     ],
+                                    id="export-button",
                                     color="primary",
                                     style={"color": "black"}  # Set text color to black
                                 ),
@@ -213,6 +217,58 @@ edit_modal = dbc.Modal(
     size="lg",
 )
 
+export_modal = dbc.Modal(
+    [
+        dbc.ModalHeader(dbc.ModalTitle("Export Data Options")),
+        dbc.ModalBody(
+            [
+                dbc.RadioItems(
+                    id='export-option',
+                    options=[
+                        {'label': 'Export All Data', 'value': 'all'},
+                        {'label': 'Export by Fiscal Year', 'value': 'fiscal_year'},
+                        {'label': 'Export by Month', 'value': 'month'}
+                    ],
+                    value='all',
+                ),
+                # Static inputs for fiscal year and month, hidden by default
+                    dbc.Input(
+                        id='fiscal-year-input',
+                        placeholder="Enter Fiscal Year",
+                        type="text",
+                        style={'margin-top': '10px', 'display': 'none'}  # Hidden by default
+                    ),
+                    dcc.Dropdown(
+                        id='month-dropdown',
+                        options=[
+                            {'label': 'January', 'value': 'JANUARY'},
+                            {'label': 'February', 'value': 'FEBRUARY'},
+                            {'label': 'March', 'value': 'MARCH'},
+                            {'label': 'April', 'value': 'APRIL'},
+                            {'label': 'May', 'value': 'MAY'},
+                            {'label': 'June', 'value': 'JUNE'},
+                            {'label': 'July', 'value': 'JULY'},
+                            {'label': 'August', 'value': 'AUGUST'},
+                            {'label': 'September', 'value': 'SEPTEMBER'},
+                            {'label': 'October', 'value': 'OCTOBER'},
+                            {'label': 'November', 'value': 'NOVEMBER'},
+                            {'label': 'December', 'value': 'DECEMBER'}
+                        ],
+                        placeholder="Select Month",
+                        style={'margin-top': '10px', 'display': 'none'},  # Hidden by default
+                        className='dropdown-option'
+                    )
+                ]
+            ),
+        dbc.ModalFooter(
+            dbc.Button("Export", id="confirm-export", className="ml-auto")
+        ),
+    ],
+    id="export-modal",
+    size="lg",
+    is_open=False
+)
+
 # Define the layout of the app
 app.layout = html.Div(
     style={'backgroundColor': '#1e2c3c', 'padding': '20px'},  # Set the background color and text color
@@ -221,6 +277,8 @@ app.layout = html.Div(
         sidebar,  # Add the sidebar
         html.Div(id='output-data-upload'),
         edit_modal,  # Add the edit modal
+        dcc.Download(id="download-dataframe-xlsx"),
+        export_modal,  # Add the export modal
         html.Div(
             style={'padding': '20px'},  # Adjust the padding
             children=[
@@ -378,11 +436,77 @@ def toggle_modal_edit(edit_n_clicks, save_n_clicks, is_open, table_data):
     elif button_id == "save-changes":
         if save_n_clicks:
             df = pd.DataFrame(table_data)
-            # Insert logic here to update the database with df
+
             df.to_sql('DATA', con=engine, if_exists='replace', index=False)
             return not is_open, dash.no_update
     
     return is_open, dash.no_update
+
+# Toggle Export Modal
+@app.callback(
+    Output("export-modal", "is_open"),
+    Input("export-button", "n_clicks"),
+    State("export-modal", "is_open")
+)
+def toggle_export_modal(n_clicks, is_open):
+    if n_clicks:
+        return not is_open
+    return is_open
+
+# Show/Hide Inputs Based on Export Option
+@app.callback(
+    [Output('fiscal-year-input', 'style'),
+     Output('month-dropdown', 'style')],
+    Input('export-option', 'value')
+)
+def toggle_export_inputs(option):
+    if option == 'fiscal_year':
+        return {'display': 'block'}, {'display': 'none'}  # Show fiscal year input, hide month dropdown
+    elif option == 'month':
+        return {'display': 'block'}, {'display': 'block'}  # Hide fiscal year input, show month dropdown
+    return {'display': 'none'}, {'display': 'none'}  # Hide both by default
+
+# Export Data
+@app.callback(
+    Output("download-dataframe-xlsx", "data"),
+    Input('confirm-export', 'n_clicks'),
+    State('export-option', 'value'),
+    State('fiscal-year-input', 'value'),
+    State('month-dropdown', 'value'),
+    prevent_initial_call=True
+)
+def export_data(n_clicks, export_option, fiscal_year, month):
+    if n_clicks is None:
+        return dash.no_update
+
+    if export_option == 'fiscal_year' and fiscal_year:
+        if not fiscal_year.isdigit():
+            return html.Div(['Please enter a valid fiscal year.'])
+        query = f"SELECT * FROM DATA WHERE FISCAL_YEAR = '{fiscal_year}'"
+        filename = f"CSI_Data_{fiscal_year}.xlsx"
+
+    elif export_option == 'month' and month and fiscal_year:
+        query = f"SELECT * FROM DATA WHERE MONTH = '{month}' AND FISCAL_YEAR = '{fiscal_year}'"
+        filename = f"CSI_Data_{month}_{fiscal_year}.xlsx"
+    else:
+        query = "SELECT * FROM DATA"
+        today = datetime.datetime.today().strftime('%Y-%m-%d')
+        filename = f"CSI_All_Data_{today}.xlsx"
+
+    # Retrieve and export data from the database
+    try:
+        df = pd.read_sql(query, con=engine)
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+        output.seek(0)
+        return dcc.send_bytes(output.getvalue(), filename)
+    
+    except Exception as e:
+        return html.Div([
+            f'An error occurred while exporting data: {str(e)}'
+        ])
+
 
 # Run the app
 if __name__ == '__main__':
