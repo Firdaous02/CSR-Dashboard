@@ -5,322 +5,89 @@ import dash_bootstrap_components as dbc
 import plotly.graph_objs as go
 from dash.dependencies import Input, Output, State, MATCH
 import pandas as pd
+import plotly.express as px
 import base64
 import io
 import datetime
 from sqlalchemy import create_engine
 from sqlalchemy import text
 
+from flask import Flask, session
+from login import login_form
+from dashboard import dashboard_layout
+from callbacks import register_callbacks
+from db import fetch_data
+from db import insert_data
+
 # Initialize the Dash app
-app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY], suppress_callback_exceptions=True)
+server = Flask(__name__)
+app = Dash(__name__, external_stylesheets=[dbc.themes.DARKLY, "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"], suppress_callback_exceptions=True)
 
+server = app.server
 app.config.suppress_callback_exceptions = True
+app.server.secret_key = 'super_secret_key'
 
-engine = create_engine('mssql+pyodbc://@localhost/CSIData?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes')
 
-# Define the figures for the graphs
 
-# 1. Response Rate - Line Graph
-line_fig = go.Figure(
-    data=[
-        go.Scatter(
-            x=['Cust 1', 'Cust 2', 'Cust 3', 'Cust 4', 'Cust 5'],
-            y=[10, 15, 8, 12, 9],
-            mode='lines+markers',
-            line=dict(color='cyan', width=2)
-        )
-    ]
-)
-line_fig.update_layout(
-    title='Response Rate',
-    paper_bgcolor='rgba(0, 0, 0, 0)',
-    plot_bgcolor='rgba(0, 0, 0, 0)',
-    font_color='white',
+app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content'),
+    html.Div(id='login-message')
+])
+
+@app.callback(
+    Output('page-content', 'children'),
+    [Input('url', 'pathname')]
 )
 
-# 2. CSI Average - Bar Graph
-bar_fig = go.Figure(
-    data=[
-        go.Bar(
-            x=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
-            y=[5, 10, 15, 7, 12, 17, 20, 22, 25],
-            marker=dict(color='orange')
-        )
-    ]
-)
-bar_fig.update_layout(
-    title='CSI Average',
-    paper_bgcolor='rgba(0, 0, 0, 0)',
-    plot_bgcolor='rgba(0, 0, 0, 0)',
-    font_color='white',
-)
+def display_page(pathname):
+    if pathname == '/dashboard':
+        if session.get('authenticated'):  # Vérifier si l'utilisateur est authentifié
+            return dashboard_layout()  # Afficher le tableau de bord
+        else:
+            return dcc.Location(pathname="/login", id="redirect-login")  # Rediriger vers la page de login s'il n'est pas authentifié
+    else:
+        return login_form()  # Page de login par défaut
 
-# 3. Percentage of Every Level of CSI - Pie Chart
-pie_fig = go.Figure(
-    data=[
-        go.Pie(
-            labels=['Very Satisfied', 'Satisfied', 'Neutral', 'Unsatisfied', 'Very Unsatisfied'],
-            values=[40, 30, 15, 10, 5],
-            hole=.3
-        )
-    ]
-)
-pie_fig.update_layout(
-    title='Percentage of Every Level of CSI',
-    paper_bgcolor='rgba(0, 0, 0, 0)',
-    font_color='white'
-)
+register_callbacks(app)
 
-# 4. Custom Graph - Treemap
-treemap_fig = go.Figure(
-    go.Treemap(
-        labels=['Cust 1', 'Cust 2', 'Cust 3', 'Cust 4', 'Cust 5', 'Cust 6', 'Cust 7'],
-        parents=['', '', '', '', '', '', ''],
-        values=[10, 20, 30, 40, 50, 60, 70],
-        marker=dict(colors=['#4c78a8', '#9ecae9', '#f58518', '#ffbf79', '#54a24b', '#88d27a', '#b79a20'])
-    )
+# Callback pour gérer la modale
+@app.callback(
+    Output("logout-modal", "is_open"),
+    [Input("logout-link", "n_clicks"), Input("confirm-logout", "n_clicks"), Input("cancel-logout", "n_clicks")],
+    [State("logout-modal", "is_open"), State("nclicks-store", "data")]
 )
-treemap_fig.update_layout(
-    title='Custom Graph',
-    paper_bgcolor='rgba(0, 0, 0, 0)',
-    font_color='white'
-)
+def toggle_logout_modal(logout_click, confirm_click, cancel_click, is_open, nclicks_data):
+    if nclicks_data is None:
+        nclicks_data = {"logout_clicks": 0, "confirm_clicks": 0, "cancel_clicks": 0}
 
-# Sidebar definition
-sidebar = dbc.Offcanvas(
-    html.Div(
-        [
-            html.H2("Dashboard", className="display-4"),
-            html.Hr(),
-            dbc.Nav(
-                [
-                    dbc.NavLink("Home", href="#", active="exact"),
-                    dbc.NavLink("Analytics", href="#", active="exact"),
-                    dbc.NavLink("Settings", href="#", active="exact"),
-                ],
-                vertical=True,
-                pills=True,
-            ),
-        ],
-    ),
-    id="sidebar",
-    title="Menu",
-    is_open=False,
-    style={"background-color": "#1e2c3c"},
-)
+    if logout_click and logout_click > nclicks_data["logout_clicks"]:
+        nclicks_data["logout_clicks"] = logout_click
+        return not is_open  # Ouvrir la modale
 
-# Navbar with logo
-navbar = dbc.Navbar(
-    dbc.Container(
-        dbc.Row(
-            [
-                # Left side with toggle, logo, and title
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            dbc.Col(dbc.Button("☰", id="open-sidebar", n_clicks=0, color="primary"), width="auto"),
-                            dbc.Col(html.Img(src="/assets/logo.png", height="40px"), width="auto"),
-                            dbc.Col(dbc.NavbarBrand("CSI Dashboard", className="ml-2"), width="auto"),
-                        ],
-                        align="center",
-                        className="g-0"
-                    ),
-                    width="auto"
-                ),
-                
-                # Spacer in the middle
-                dbc.Col(width=True),  # This column will expand to take the remaining space
-                
-                # Right side with buttons
-                dbc.Col(
-                    dbc.Row(
-                        [
-                            dbc.Col(
-                                dcc.Upload(
-                                    id='upload-data',
-                                    children=dbc.Button(
-                                        [
-                                            html.Img(src="/assets/import-icon.png", height="20px", style={"margin-right": "5px"}),
-                                            "Import Data"
-                                        ],
-                                        color="warning",
-                                        className="mr-2",
-                                        style={"color": "black"}  # Set text color to black
-                                    ),
-                                    style={'display': 'inline-block'}
-                                ),
-                                width="auto"
-                            ),
-                            dbc.Col(
-                                dbc.Button(
-                                    [
-                                        html.Img(src="/assets/edit-icon.png", height="20px", style={"margin-right": "5px"}),
-                                        "Edit"
-                                    ],
-                                    id="edit-button",  # Add id for the edit button
-                                    color="light",
-                                    className="mr-2",
-                                    style={"color": "black"}  # Set text color to black
-                                ),
-                                width="auto"
-                            ),
-                            dbc.Col(
-                                dbc.Button(
-                                    [
-                                        html.Img(src="/assets/export-icon.png", height="20px", style={"margin-right": "5px"}),
-                                        "Export"
-                                    ],
-                                    id="export-button",
-                                    color="primary",
-                                    style={"color": "black"}  # Set text color to black
-                                ),
-                                width="auto"
-                            ),
-                        ],
-                        align="center",
-                        className="g-0",
-                        justify="end"
-                    ),
-                    width="auto"
-                ),
-            ],
-            align="center",
-            className="g-0 flex-nowrap w-100"
-        ),
-        fluid=True,
-    ),
-    color="dark",
-    dark=True,
-    className="mb-3",
-)
+    if cancel_click and cancel_click > nclicks_data["cancel_clicks"]:
+        nclicks_data["cancel_clicks"] = cancel_click
+        return False  # Fermer la modale
 
-# Modal for editing data
-edit_modal = dbc.Modal(
-    [
-        dbc.ModalHeader(dbc.ModalTitle("Edit Data")),
-        dbc.ModalBody(
-            dash_table.DataTable(
-                id='edit-table',
-                columns=[{"name": i, "id": i} for i in ['unique_id', 'OFFICE', 'FISCAL_YEAR', 'MONTH', 'SURVEY_GROUP', 'SOLD_TO', 'GLOBAL_CUSTOMER', 'SOLD_TO_NAME', 'FIRST_NAME', 'LAST_NAME', 'EMAIL', 'OVERALL_SATISFACTION', 'CUSTOMER_SERVICE_REPRESENTATIVE_SATISFACTION', 'EASE_OF_DOING_BUSINESS', 'ADDITIONNAL_COMMENTS', 'CUSTOMER_SATISFACTION_INDEX']],
-                editable=True,
-                row_deletable=True,
-                style_table={'overflowX': 'auto'},
-                style_cell={'textAlign': 'left', 'color': 'black'},
-            ),
-            style={"maxHeight": "60vh", "overflowY": "auto"}
-        ),
-        dbc.ModalFooter(
-            dbc.Button("Save Changes", id="save-changes", className="ml-auto")
-        ),
-    ],
-    id="edit-modal",
-    size="lg",
-)
+    if confirm_click and confirm_click > nclicks_data["confirm_clicks"]:
+        nclicks_data["confirm_clicks"] = confirm_click
+        session.clear()
+        return False  # Fermer la modale après déconnexion
 
-export_modal = dbc.Modal(
-    [
-        dbc.ModalHeader(dbc.ModalTitle("Export Data Options")),
-        dbc.ModalBody(
-            [
-                dbc.RadioItems(
-                    id='export-option',
-                    options=[
-                        {'label': 'Export All Data', 'value': 'all'},
-                        {'label': 'Export by Fiscal Year', 'value': 'fiscal_year'},
-                        {'label': 'Export by Month', 'value': 'month'}
-                    ],
-                    value='all',
-                ),
-                # Static inputs for fiscal year and month, hidden by default
-                    dbc.Input(
-                        id='fiscal-year-input',
-                        placeholder="Enter Fiscal Year",
-                        type="text",
-                        style={'margin-top': '10px', 'display': 'none'}  # Hidden by default
-                    ),
-                    dcc.Dropdown(
-                        id='month-dropdown',
-                        options=[
-                            {'label': 'January', 'value': 'JANUARY'},
-                            {'label': 'February', 'value': 'FEBRUARY'},
-                            {'label': 'March', 'value': 'MARCH'},
-                            {'label': 'April', 'value': 'APRIL'},
-                            {'label': 'May', 'value': 'MAY'},
-                            {'label': 'June', 'value': 'JUNE'},
-                            {'label': 'July', 'value': 'JULY'},
-                            {'label': 'August', 'value': 'AUGUST'},
-                            {'label': 'September', 'value': 'SEPTEMBER'},
-                            {'label': 'October', 'value': 'OCTOBER'},
-                            {'label': 'November', 'value': 'NOVEMBER'},
-                            {'label': 'December', 'value': 'DECEMBER'}
-                        ],
-                        placeholder="Select Month",
-                        style={'margin-top': '10px', 'display': 'none'},  # Hidden by default
-                        className='dropdown-option'
-                    )
-                ]
-            ),
-        dbc.ModalFooter(
-            dbc.Button("Export", id="confirm-export", className="ml-auto")
-        ),
-    ],
-    id="export-modal",
-    size="lg",
-    is_open=False
-)
+    return is_open
 
-# Define the layout of the app
-app.layout = html.Div(
-    style={'backgroundColor': '#1e2c3c', 'padding': '20px'},  # Set the background color and text color
-    children=[
-        navbar,  # Add the navbar with the logo
-        sidebar,  # Add the sidebar
-        html.Div(id='output-data-upload'),
-        edit_modal,  # Add the edit modal
-        dcc.Download(id="download-dataframe-xlsx"),
-        export_modal,  # Add the export modal
-        html.Div(
-            style={'padding': '20px'},  # Adjust the padding
-            children=[
-                dbc.Row([
-                    dbc.Col(
-                    dcc.Dropdown(
-                        options=[
-                            {'label': 'By Global Customer', 'value': 'global'},
-                            {'label': 'By Ship to', 'value': 'ship_to'},
-                            {'label': 'By Office', 'value': 'office'}
-                        ],
-                        value='global',
-                        clearable=False,
-                        style={'color': '#000'}
-                    ),
-                width=4,
-                className="align-items-center"
-            ),
-            dbc.Col(
-                dcc.Input(
-                    placeholder="2024",
-                    style={'color': '#000'}
-                ),
-                width=2,
-                className="d-flex align-items-center justify-content-center"
-            ),
-                ]),
-                
-                dbc.Row([
-                    dbc.Col(dcc.Graph(figure=line_fig), width=6),
-                    dbc.Col(dcc.Graph(figure=bar_fig), width=6),
-                ]),
-                dbc.Row([
-                    dbc.Col(dcc.Graph(figure=pie_fig), width=6),
-                    dbc.Col(dcc.Graph(figure=treemap_fig), width=6),
-                ])
-            ]
-        ),
-    ]
+# Callback pour stocker les n_clicks
+@app.callback(
+    Output('nclicks-store', 'data'),
+    [Input("logout-link", "n_clicks"), Input("confirm-logout", "n_clicks"), Input("cancel-logout", "n_clicks")],
+    [State('nclicks-store', 'data')]
 )
+def update_nclicks_store(logout_click, confirm_click, cancel_click, nclicks_data):
+    if nclicks_data is None:
+        nclicks_data = {"logout_clicks": 0, "confirm_clicks": 0, "cancel_clicks": 0}
+    return {"logout_clicks": logout_click or 0, "confirm_clicks": confirm_click or 0, "cancel_clicks": cancel_click or 0}
 
-# Callback to toggle the sidebar
+        # Callback to toggle the sidebar
 @app.callback(
     Output("sidebar", "is_open"),
     Input("open-sidebar", "n_clicks"),
@@ -330,20 +97,10 @@ def toggle_sidebar(n_clicks, is_open):
     if n_clicks:
         return not is_open
     return is_open
-
 def parse_contents(contents, filename):
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
     
-    try:
-        connection = engine.connect()
-        connection.close()  # Close the connection
-    except Exception as e:
-        return html.Div(
-            f'Database connection error : {str(e)}',
-            className='alert alert-danger'
-        )
-
     try:
         if 'xls' in filename:
             df = pd.read_excel(io.BytesIO(decoded))
@@ -361,16 +118,16 @@ def parse_contents(contents, filename):
     try:
         # Créez la colonne "unique_id" en combinant les valeurs de six colonnes
         df['unique_id'] = (
-            df['OFFICE'].astype(str) + '_' +
-            df['FISCAL_YEAR'].astype(str) + '_' +
-            df['MONTH'].astype(str) + '_' +
-            df['SOLD_TO'].astype(str) + '_' +
-            df['FIRST_NAME'].astype(str) + '_' +
-            df['LAST_NAME'].astype(str)
+           df['OFFICE'].astype(str) + '_' +
+           df['FISCAL_YEAR'].astype(str) + '_' +
+           df['MONTH'].astype(str) + '_' +
+           df['SOLD_TO'].astype(str) + '_' +
+           df['FIRST_NAME'].astype(str) + '_' +
+           df['LAST_NAME'].astype(str)
         )
-
         # Récupérer les unique_id existants dans la base de données
-        existing_ids = pd.read_sql("SELECT unique_id FROM data", con=engine)
+        fetch_data_query = "SELECT unique_id FROM DATA"
+        existing_ids = fetch_data(fetch_data_query)
         existing_ids_set = set(existing_ids['unique_id'])
         
         # Filtrer le DataFrame pour ne conserver que les nouveaux enregistrements
@@ -378,37 +135,31 @@ def parse_contents(contents, filename):
         
         if not df_to_insert.empty:
             # Insérer les nouveaux enregistrements
-            df_to_insert.to_sql('data', con=engine, if_exists='append', index=False)
+            insert_data(df_to_insert, 'DATA', 'append')
         else:
-            return html.Div(
-                'No new data to insert. All records already exist in the database.',
+           return html.Div(
+               'No new data to insert. All records already exist in the database.',
                 className='alert alert-info'
             )
-
     except Exception as e:
         return html.Div(
             f'An error occurred while inserting data into the database: {str(e)}',
             className='alert alert-danger'
         )
-
     return html.Div(
         'Data successfully inserted into the database.',
         className='alert alert-success'
     )
-
-
-
-
 @app.callback(Output('output-data-upload', 'children'),
-              [Input('upload-data', 'contents')],
-              [State('upload-data', 'filename')])
+    [Input('upload-data', 'contents')],
+    [State('upload-data', 'filename')])
 
 def update_output(contents, filename):
     if contents is not None:
         children = parse_contents(contents, filename)
         return children
 
-# Combined callback to open the modal, load data, and save changes
+    # Combined callback to open the modal, load data, and save changes
 @app.callback(
     Output("edit-modal", "is_open"),
     Output("edit-table", "data"),
@@ -429,20 +180,20 @@ def toggle_modal_edit(edit_n_clicks, save_n_clicks, is_open, table_data):
         if edit_n_clicks:
             # Load data from database
             query = "SELECT * FROM data"
-            df = pd.read_sql(query, con=engine)
+            
+            df = fetch_data(query)
             return not is_open, df.to_dict('records')
         return is_open, dash.no_update
-    
+       
     elif button_id == "save-changes":
         if save_n_clicks:
             df = pd.DataFrame(table_data)
-
-            df.to_sql('DATA', con=engine, if_exists='replace', index=False)
+            insert_data(df, 'DATA', 'replace')
             return not is_open, dash.no_update
     
     return is_open, dash.no_update
 
-# Toggle Export Modal
+    # Toggle Export Modal
 @app.callback(
     Output("export-modal", "is_open"),
     Input("export-button", "n_clicks"),
@@ -453,20 +204,19 @@ def toggle_export_modal(n_clicks, is_open):
         return not is_open
     return is_open
 
-# Show/Hide Inputs Based on Export Option
+    # Show/Hide Inputs Based on Export Option
 @app.callback(
     [Output('fiscal-year-input', 'style'),
-     Output('month-dropdown', 'style')],
+    Output('month-dropdown', 'style')],
     Input('export-option', 'value')
 )
 def toggle_export_inputs(option):
     if option == 'fiscal_year':
         return {'display': 'block'}, {'display': 'none'}  # Show fiscal year input, hide month dropdown
     elif option == 'month':
-        return {'display': 'block'}, {'display': 'block'}  # Hide fiscal year input, show month dropdown
+       return {'display': 'block'}, {'display': 'block'}  # Hide fiscal year input, show month dropdown
     return {'display': 'none'}, {'display': 'none'}  # Hide both by default
-
-# Export Data
+ # Export Data
 @app.callback(
     Output("download-dataframe-xlsx", "data"),
     Input('confirm-export', 'n_clicks'),
@@ -478,7 +228,6 @@ def toggle_export_inputs(option):
 def export_data(n_clicks, export_option, fiscal_year, month):
     if n_clicks is None:
         return dash.no_update
-
     if export_option == 'fiscal_year' and fiscal_year:
         if not fiscal_year.isdigit():
             return html.Div(['Please enter a valid fiscal year.'])
@@ -486,8 +235,12 @@ def export_data(n_clicks, export_option, fiscal_year, month):
         filename = f"CSI_Data_{fiscal_year}.xlsx"
 
     elif export_option == 'month' and month and fiscal_year:
-        query = f"SELECT * FROM DATA WHERE MONTH = '{month}' AND FISCAL_YEAR = '{fiscal_year}'"
-        filename = f"CSI_Data_{month}_{fiscal_year}.xlsx"
+        if not fiscal_year.isdigit():
+            return html.Div(['Please enter a valid fiscal year.'])
+
+        months_str = ', '.join([f"'{month}'" for month in month])
+        query = f"SELECT * FROM DATA WHERE MONTH IN ({months_str}) AND FISCAL_YEAR = '{fiscal_year}'"
+        filename = f"CSI_Data_{months_str}_{fiscal_year}.xlsx"
     else:
         query = "SELECT * FROM DATA"
         today = datetime.datetime.today().strftime('%Y-%m-%d')
@@ -495,7 +248,7 @@ def export_data(n_clicks, export_option, fiscal_year, month):
 
     # Retrieve and export data from the database
     try:
-        df = pd.read_sql(query, con=engine)
+        df = fetch_data(query)
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df.to_excel(writer, index=False, sheet_name='Sheet1')
@@ -507,7 +260,353 @@ def export_data(n_clicks, export_option, fiscal_year, month):
             f'An error occurred while exporting data: {str(e)}'
         ])
 
+# Callback pour mettre à jour les graphiques en fonction des filtres
+@app.callback(
+    [
+        Output('line-graph', 'figure'),
+        Output('bar-graph', 'figure'),
+        Output('pie-graph', 'figure'),
+        Output('treemap-graph', 'figure'),
+        Output('bar-evolution-graph', 'figure'),
+        Output('comments-table', 'data')  # Output to update the table
 
-# Run the app
+    ],
+    [
+        Input('filter-dropdown', 'value'),
+        Input('fiscal-year-input-filter', 'value')
+    ]
+)
+
+def update_graphs(filter_value, fiscal_year):
+    fiscal_year_query = f"((FISCAL_YEAR = '{fiscal_year - 1}' and MONTH in ('OCTOBER', 'NOVEMBER', 'DECEMBER') ) OR (FISCAL_YEAR= '{fiscal_year}' and MONTH in ('JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER')))"
+
+    #Pie graph
+    query_pie = f"SELECT OVERALL_SATISFACTION, COUNT(OVERALL_SATISFACTION) AS 'Rating'FROM DATA WHERE OVERALL_SATISFACTION IS NOT NULL AND {fiscal_year_query} GROUP BY OVERALL_SATISFACTION;"
+    df = fetch_data(query_pie)
+    custom_colors = ['#BE5B2D', '#D5692A', '#EB8204', '#FC9A22', '#FDB55E']
+    pie_fig = px.pie(df, names='OVERALL_SATISFACTION', values='Rating', title="Overall Satisfaction", color_discrete_sequence=custom_colors )
+    pie_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+        paper_bgcolor='#0F2931',       # Light gray background for the entire chart
+        title_font=dict(size=20, color='white', family="Calibri"),  # Title font settings
+        legend_font=dict(color='white'),
+        font=dict(color='white')
+    )
+    
+
+    #Tree map
+    query_treemap = f"SELECT GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
+    df = fetch_data(query_treemap)
+    df['color'] = df['CSI'].apply(lambda x: '#429EBD' if x > 14 else 'red')
+    treemap_fig = px.treemap(df, path=['GLOBAL_CUSTOMER'], values='CSI',
+        color='color',  # Use the color column for coloring
+        color_discrete_map={'#429EBD': '#429EBD', 'red': 'red'},  # Define color mapping
+        title="Customer Satisfaction Index Treemap")
+    treemap_fig.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+        paper_bgcolor='#0F2931',       # Light gray background for the entire chart
+        title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+        legend_font=dict(color='white'),
+        font=dict(color='black')
+    )
+        # Query for the comments
+    query_comments = f"SELECT OFFICE, FISCAL_YEAR, MONTH, GLOBAL_CUSTOMER, concat(FIRST_NAME, ' ',LAST_NAME) as name, ADDITIONNAL_COMMENTS from DATA WHERE ADDITIONNAL_COMMENTS is not null  AND {fiscal_year_query};"
+    comments_df = fetch_data(query_comments)
+
+    # Convert the DataFrame to a list of dictionaries for the DataTable
+    table_data = comments_df.to_dict('records')
+
+    if filter_value == 'global':
+        #Line graph BY GLOBAL CUSTOMER
+        query_line = f"SELECT GLOBAL_CUSTOMER, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
+
+        df = fetch_data(query_line)
+
+        line_fig = px.line(
+            df, 
+            x='GLOBAL_CUSTOMER', 
+            y='RES-RATE', 
+            labels={'RES-RATE': 'Response Rate (%)'},
+            title="Response Rate by Global Customer"
+        )
+        line_fig.update_layout(
+            xaxis_title='',  # Remove the x-axis label 
+            plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+            paper_bgcolor='#0F2931',       # Light gray background for the entire chart
+            title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+            legend_font=dict(color='white'),
+            font=dict(color='white')
+        )
+
+        #Bar graph BY GLOBAL CUSTOMER
+        query_bar = f"SELECT GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
+        df = fetch_data(query_bar)
+
+        df['color'] = df['CSI Average'].apply(lambda x: '#429EBD' if x > 14 else 'red')
+
+        bar_fig = px.bar(df, 
+            x='GLOBAL_CUSTOMER', 
+            y='CSI Average', 
+            color='color',  # Use the color column for coloring
+            color_discrete_map={'#429EBD': '#429EBD', 'red': 'red'},  # Define color mapping
+            title="Customer Satisfaction Index by Global Customer"
+        )
+        bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == 'blue' else '<= 14'))
+
+        bar_fig.update_layout(
+            xaxis_title='',  # Remove the x-axis label 
+            plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+            paper_bgcolor='#0F2931',       # Light gray background for the entire chart
+            title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+            legend_font=dict(color='white'),
+            font=dict(color='white')
+        )
+        #Evolution bar graph BY GLOBAL CUSTOMER
+        query_bar = f"SELECT MONTH, GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER, MONTH ORDER BY MONTH;"
+        df = fetch_data(query_bar)
+
+        df['color'] = df['CSI'].apply(lambda x: 'blue' if x > 14 else 'red')
+
+        bar_evolution_fig = px.bar(df, 
+            x='MONTH', 
+            y='CSI', 
+            color='GLOBAL_CUSTOMER',  # Use the color column for coloring
+            color_discrete_map={'blue': 'blue', 'red': 'red'},  # Define color mapping
+            barmode='group',
+            title="Customer Satisfaction Index by Global Customer"
+        )
+        bar_evolution_fig.update_layout(
+            xaxis_title='',
+            yaxis_title='Customer Satisfaction Index',
+            legend_title='Global Customer',
+            xaxis_tickangle=-45,
+            bargap=0.05,
+            plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+            paper_bgcolor='#0F2931',       # Light gray background for the entire chart
+            title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+            legend_font=dict(color='white'),
+            font=dict(color='white')
+        )
+    elif filter_value == 'ship_to':
+        #Line graph
+        query_line = f"SELECT SOLD_TO_NAME, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY SOLD_TO_NAME;"
+        df = fetch_data(query_line)
+        line_fig = px.line(
+            df, 
+            x='SOLD_TO_NAME', 
+            y='RES-RATE', 
+            labels={'RES-RATE': 'Response Rate (%)'},
+            title="Response Rate by Ship To"
+        )
+        line_fig.update_layout(
+            xaxis_title='',  # Remove the x-axis label 
+        )
+
+        #Bar graph
+        query_bar = f"SELECT SOLD_TO_NAME, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY SOLD_TO_NAME;"
+        df = fetch_data(query_bar)
+        df['color'] = df['CSI Average'].apply(lambda x: 'blue' if x > 14 else 'red')
+
+        bar_fig = px.bar(df, 
+            x='SOLD_TO_NAME', 
+            y='CSI Average', 
+            color='color', 
+            color_discrete_map={'blue': 'blue', 'red': 'red'}, 
+            title="Customer Satisfaction Index Average by Ship To"
+        )
+        bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == 'blue' else '<= 14'))
+
+        bar_fig.update_layout(
+            xaxis_title='',  # Remove the x-axis label
+            yaxis_title='CSI Average',
+            legend_title='Color',
+            xaxis_tickangle=-45,
+            bargap=0.05,
+            plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+            paper_bgcolor='#0F2931',       # Light gray background for the entire chart
+            title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+            legend_font=dict(color='white'),
+            font=dict(color='white')
+        )
+        
+        #Evolution bar graph
+        query_bar = f"SELECT MONTH, SOLD_TO_NAME, CUSTOMER_SATISFACTION_INDEX 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER BY MONTH;"
+        df = fetch_data(query_bar)
+        bar_evolution_fig = px.bar(df, 
+            x='MONTH', 
+            y='CSI', 
+            color='SOLD_TO_NAME',  # Use the color column for coloring
+            barmode='group',
+            title="Customer Satisfaction Index by Ship To"
+        )
+        bar_evolution_fig.update_layout(
+            xaxis_title='Month',
+            yaxis_title='Customer Satisfaction Index',
+            legend_title='Ship To',
+            xaxis_tickangle=-45,
+            bargap=0.05,
+            plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+            paper_bgcolor='#0F2931',       # Light gray background for the entire chart
+            title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+            legend_font=dict(color='white'),
+            font=dict(color='white')  
+        ) 
+    elif filter_value == 'office':
+        #Line graph BY OFFICE
+        query_line = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE ORDER BY MONTH, OFFICE;"
+        df = fetch_data(query_line)
+        line_fig = px.line(
+            df, 
+            x='MONTH', 
+            y='RES-RATE', 
+            color='OFFICE',
+            labels={'RES-RATE': 'Response Rate (%)'},
+            title="Response Rate by Office"
+        )
+        line_fig.update_layout(
+            xaxis_title='',  # Remove the x-axis label 
+            legend_title='Office'
+        )
+
+        #Bar graph BY OFFICE
+        query_bar = f"SELECT OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY OFFICE;"
+        df = fetch_data(query_bar)
+        df['color'] = df['CSI'].apply(lambda x: 'blue' if x > 14 else 'red')
+
+        bar_fig = px.bar(df, 
+            x='OFFICE', 
+            y='CSI', 
+            color='color', 
+            color_discrete_map={'blue': 'blue', 'red': 'red'}, 
+            title="Customer Satisfaction Index Average by Office"
+        )
+        bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == 'blue' else '<= 14'))
+
+        bar_fig.update_layout(
+            xaxis_title='',  # Remove the x-axis label
+            yaxis_title='CSI',
+            legend_title='Color',
+            xaxis_tickangle=-45,
+            bargap=0.05  
+        )
+        
+        #Evolution bar graph BY OFFICE
+        query_bar = f"SELECT MONTH, OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH ORDER BY MONTH;"
+        df = fetch_data(query_bar)
+        bar_evolution_fig = px.bar(df, 
+            x='MONTH', 
+            y='CSI', 
+            color='OFFICE',  # Use the color column for coloring
+            barmode='group',
+            title="Customer Satisfaction Index by Office"
+        )
+        bar_evolution_fig.update_layout(
+            xaxis_title='Month',
+            yaxis_title='Customer Satisfaction Index',
+            legend_title='Office',
+            xaxis_tickangle=-45,
+            bargap=0.05  
+        )    
+
+
+
+    return line_fig, bar_fig, pie_fig, treemap_fig, bar_evolution_fig, table_data
+
+@app.callback(
+    Output("download-graphs-dataframe-xlsx", "data"),
+    [Input("export-pie", "n_clicks"),
+    Input("export-line", "n_clicks"),
+    Input("export-bar", "n_clicks"),
+    Input("export-treemap", "n_clicks"),
+    Input("export-evolution-bar", "n_clicks"),
+    Input("export-comments", "n_clicks")],
+    [dash.dependencies.State('line-graph', 'figure'),
+    dash.dependencies.State('bar-graph', 'figure'),
+    dash.dependencies.State('pie-graph', 'figure'),
+    dash.dependencies.State('treemap-graph', 'figure'),
+    dash.dependencies.State('bar-evolution-graph', 'figure'),
+    dash.dependencies.State('comments-table', 'data'),
+    dash.dependencies.State('filter-dropdown', 'value'),
+    dash.dependencies.State('fiscal-year-input-filter', 'value')],
+    prevent_initial_call=True
+)
+def export_graph_data(export_pie, export_line, export_bar, export_treemap, export_evolution_bar, export_comments,
+                    line_fig, bar_fig, pie_fig, treemap_fig, bar_evolution_fig, table_data,
+                    filter_value, fiscal_year):
+    
+    # Déterminer quel bouton a été cliqué
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
+    
+    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    fiscal_year_query = f"((FISCAL_YEAR = '{fiscal_year - 1}' and MONTH in ('OCTOBER', 'NOVEMBER', 'DECEMBER') ) OR (FISCAL_YEAR= '{fiscal_year}' and MONTH in ('JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER')))"
+
+    # Construire la condition WHERE basée sur les filtres
+    if filter_value == 'office':
+        filter_column = 'OFFICE'
+        line_query = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE ORDER BY MONTH, OFFICE;"
+        bar_query = f"SELECT OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY OFFICE;"
+        evolution_bar_query = f"SELECT MONTH, OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH ORDER BY MONTH;"
+
+    elif filter_value == 'ship_to':
+        filter_column = 'SOLD_TO_NAME'
+        line_query = f"SELECT {filter_column}, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY {filter_column}"
+        bar_query = f"SELECT {filter_column}, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY {filter_column}"
+        evolution_bar_query = f"SELECT MONTH, {filter_column}, CUSTOMER_SATISFACTION_INDEX AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER BY MONTH, {filter_column};"
+
+    elif filter_value == 'global':
+        filter_column = 'GLOBAL_CUSTOMER'
+        line_query = f"SELECT {filter_column}, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY {filter_column}"
+        bar_query = f"SELECT {filter_column}, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY {filter_column}"
+        evolution_bar_query = f"SELECT MONTH, {filter_column}, CUSTOMER_SATISFACTION_INDEX AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER BY MONTH, {filter_column};"
+
+    else:
+        filter_column = None
+    
+
+    
+    # Sélectionner les données en fonction du bouton cliqué et du filtre
+    if button_id == "export-pie":
+        pie_query = f"SELECT OVERALL_SATISFACTION, COUNT(OVERALL_SATISFACTION) AS 'Rating' FROM DATA WHERE OVERALL_SATISFACTION IS NOT NULL AND {fiscal_year_query} GROUP BY OVERALL_SATISFACTION;"
+        df = fetch_data(pie_query)
+        filename = f"Pie_Graph_Data_{fiscal_year}.xlsx"
+    
+    elif button_id == "export-treemap":
+        treemap_query = f"SELECT GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
+        df = fetch_data(treemap_query)
+        filename = f"Treemap_Graph_Data_{fiscal_year}.xlsx"
+    
+    elif button_id == "export-comments":
+        comments_query = f"SELECT OFFICE, FISCAL_YEAR, MONTH, GLOBAL_CUSTOMER, concat(FIRST_NAME, ' ',LAST_NAME) as name, ADDITIONNAL_COMMENTS from DATA WHERE ADDITIONNAL_COMMENTS is not null  AND {fiscal_year_query};"
+        df = fetch_data(comments_query)
+        filename = f"Comments_{fiscal_year}.xlsx"
+    
+    elif button_id == "export-line":
+        df = fetch_data(line_query)
+        filename = f"Line_Graph_Data_{filter_column}_{fiscal_year}.xlsx"
+    
+    elif button_id == "export-bar":
+        df = fetch_data(bar_query)
+        filename = f"Bar_Graph_Data_{filter_column}_{fiscal_year}.xlsx"
+
+
+    elif button_id == "export-evolution-bar":
+        df = fetch_data(evolution_bar_query)
+        filename = f"Evolution_Bar_Graph_Data_{filter_column}_{fiscal_year}.xlsx"
+    
+    # Exporter les données au format Excel
+    return dcc.send_data_frame(df.to_excel, filename, sheet_name="Sheet1", index=False)
+
 if __name__ == '__main__':
     app.run_server(debug=True)
+
+
+
+# Define the layout of the app
+
+
+
+
