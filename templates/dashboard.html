@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% block head %}
+    {{ dash_meta_tags() }}
+    <title>Dashboard</title>
+    {% block scripts %}
+    {{ dash_scripts() }}
+    {% endblock %}
+    {% endblock %}
+</head>
+<body>
+    <div>
+        {% block content %}
+        {{ dash_renderer() }}
+        {{ dash_layout() }}
+        {% endblock %}
+    </div>
+    <script>
+        // Charger les privilèges depuis la route Flask
+        fetch('/get_privileges')
+            .then(response => response.json())
+            .then(data => {
+                const store = document.getElementById('user-privileges');
+                store.data = data.privileges;
+            });
+    </script>
+</body>
+</html>

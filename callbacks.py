@@ -44,60 +44,6 @@ from sqlalchemy import text
 
 
 def dashboard_callbacks(dash_app):
-
-    def user_list_layout():
-        query = "SELECT * FROM USERS"
-        users = connection.execute(query).fetchall()
-        
-        return html.Div([
-            html.H2("Liste des utilisateurs"),
-            dbc.Table.from_dataframe(pd.DataFrame(users, columns=["First Name", "Last Name", "Email", "Role"]), striped=True, bordered=True, hover=True),
-            html.Button("Ajouter un utilisateur", id="add-user-btn", className="btn btn-success")
-        ])
-
-    def add_user_layout():
-        return html.Div([
-            html.H2("Ajouter un utilisateur"),
-            dbc.Input(id="new-user-first-name", placeholder="Prénom", type="text"),
-            dbc.Input(id="new-user-last-name", placeholder="Nom", type="text"),
-            dbc.Input(id="new-user-email", placeholder="Email", type="email"),
-            dbc.Input(id="new-user-password", placeholder="Mot de passe", type="password"),
-            dcc.Dropdown(
-                id="new-user-role",
-                options=[
-                    {'label': 'Administrateur', 'value': 'admin'},
-                    {'label': 'Utilisateur standard', 'value': 'standard'}
-                ],
-                placeholder="Sélectionner un rôle"
-            ),
-            html.Button("Ajouter", id="confirm-add-user-btn", className="btn btn-success")
-        ])
-
-    @dash_app.callback(
-        Output('user-list', 'children'),
-        [Input('user-management-btn', 'n_clicks')]
-    )
-    def show_user_list(n_clicks):
-        if n_clicks:
-            return user_list_layout()
-        return no_update
-
-    @dash_app.callback(
-        Output('add-user-msg', 'children'),
-        [Input('confirm-add-user-btn', 'n_clicks')],
-        [State('new-user-first-name', 'value'),
-        State('new-user-last-name', 'value'),
-        State('new-user-email', 'value'),
-        State('new-user-password', 'value'),
-        State('new-user-role', 'value')]
-    )
-    def add_user(n_clicks, first_name, last_name, email, password, role):
-        if n_clicks:
-            query = text("INSERT INTO USERS (FIRST_NAME, LAST_NAME, EMAIL, PASSWORD, ROLE) VALUES (:first_name, :last_name, :email, :password, :role)")
-            connection.execute(query, {'first_name': first_name, 'last_name': last_name, 'email': email, 'password': password, 'role': role})
-            return "Utilisateur ajouté avec succès !"
-        return no_update
-
     # Callback pour gérer la modale
     @dash_app.callback(
         [Output("logout-modal", "is_open"),
@@ -144,59 +90,65 @@ def dashboard_callbacks(dash_app):
         if n_clicks:
             return not is_open
         return is_open
+
     def parse_contents(contents, filename):
-        content_type, content_string = contents.split(',')
-        decoded = base64.b64decode(content_string)
-        
-        try:
-            if 'xls' in filename:
-                df = pd.read_excel(io.BytesIO(decoded))
-            else:
+        if 'Import Data' not in privileges.split(','):
+            return html.Div('You do not have the necessary privileges to perform this action.',
+                            className='alert alert-danger'
+                            )
+        else:
+            content_type, content_string = contents.split(',')
+            decoded = base64.b64decode(content_string)
+            
+            try:
+                if 'xls' in filename:
+                    df = pd.read_excel(io.BytesIO(decoded))
+                else:
+                    return html.Div(
+                        'File format not supported.',
+                        className='alert alert-danger'
+                    )
+            except Exception as e:
                 return html.Div(
-                    'File format not supported.',
+                    f'There was an error processing this file: {str(e)}',
                     className='alert alert-danger'
                 )
-        except Exception as e:
-            return html.Div(
-                f'There was an error processing this file: {str(e)}',
-                className='alert alert-danger'
-            )
-        
-        try:
-            # Créez la colonne "unique_id" en combinant les valeurs de six colonnes
-            df['unique_id'] = (
-            df['OFFICE'].astype(str) + '_' +
-            df['FISCAL_YEAR'].astype(str) + '_' +
-            df['MONTH'].astype(str) + '_' +
-            df['SOLD_TO'].astype(str) + '_' +
-            df['FIRST_NAME'].astype(str) + '_' +
-            df['LAST_NAME'].astype(str)
-            )
-            # Récupérer les unique_id existants dans la base de données
-            fetch_data_query = "SELECT unique_id FROM DATA"
-            existing_ids = fetch_data(fetch_data_query)
-            existing_ids_set = set(existing_ids['unique_id'])
             
-            # Filtrer le DataFrame pour ne conserver que les nouveaux enregistrements
-            df_to_insert = df[~df['unique_id'].isin(existing_ids_set)]
-            
-            if not df_to_insert.empty:
-                # Insérer les nouveaux enregistrements
-                insert_data(df_to_insert, 'DATA', 'append')
-            else:
+            try:
+                # Créez la colonne "unique_id" en combinant les valeurs de six colonnes
+                df['unique_id'] = (
+                df['OFFICE'].astype(str) + '_' +
+                df['FISCAL_YEAR'].astype(str) + '_' +
+                df['MONTH'].astype(str) + '_' +
+                df['SOLD_TO'].astype(str) + '_' +
+                df['FIRST_NAME'].astype(str) + '_' +
+                df['LAST_NAME'].astype(str)
+                )
+                # Récupérer les unique_id existants dans la base de données
+                fetch_data_query = "SELECT unique_id FROM DATA"
+                existing_ids = fetch_data(fetch_data_query)
+                existing_ids_set = set(existing_ids['unique_id'])
+                
+                # Filtrer le DataFrame pour ne conserver que les nouveaux enregistrements
+                df_to_insert = df[~df['unique_id'].isin(existing_ids_set)]
+                
+                if not df_to_insert.empty:
+                    # Insérer les nouveaux enregistrements
+                    insert_data(df_to_insert, 'DATA', 'append')
+                else:
+                    return html.Div(
+                        'No new data to insert. All records already exist in the database.',
+                            className='alert alert-info'
+                        )
+            except Exception as e:
                 return html.Div(
-                    'No new data to insert. All records already exist in the database.',
-                        className='alert alert-info'
-                    )
-        except Exception as e:
+                    f'An error occurred while inserting data into the database: {str(e)}',
+                    className='alert alert-danger'
+                )
             return html.Div(
-                f'An error occurred while inserting data into the database: {str(e)}',
-                className='alert alert-danger'
+                'Data successfully inserted into the database.',
+                className='alert alert-success'
             )
-        return html.Div(
-            'Data successfully inserted into the database.',
-            className='alert alert-success'
-        )
     @dash_app.callback(Output('output-data-upload', 'children'),
         [Input('upload-data', 'contents')],
         [State('upload-data', 'filename')])
@@ -205,7 +157,6 @@ def dashboard_callbacks(dash_app):
         if contents is not None:
             children = parse_contents(contents, filename)
             return children
-
         # Combined callback to open the modal, load data, and save changes
     @dash_app.callback(
         Output("edit-modal", "is_open"),
