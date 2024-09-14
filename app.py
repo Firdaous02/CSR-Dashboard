@@ -1,15 +1,17 @@
 import json
 from flask import Flask, session, redirect, url_for, request, render_template, flash, send_from_directory, jsonify
-from dash import Dash, html, dcc, Output, Input, dash, State
+from dash import Dash, html, dcc, Output, Input, dash, State, MATCH, ALL
 import dash_bootstrap_components as dbc
+import dash_mantine_components as dmc
+from dash_iconify import DashIconify
 from dashboard import dashboard_layout
 from callbacks import dashboard_callbacks
-from db import verify_user
+from db import verify_user, count_onhold_issues
 import os
 from db import get_all_users, get_user_by_email, update_user_in_db, delete_user_from_db, add_user_db, insert_data, update_table
 from werkzeug.security import generate_password_hash
 import pandas as pd
-from db import verify_user
+from db import verify_user, add_issue, update_issue_status, get_issues
 from db import fetch_data
 from db import insert_data
 import plotly.express as px
@@ -69,25 +71,244 @@ def logout():
 def serve_static(filename):
     return send_from_directory(os.path.join(os.getcwd(), 'assets'), filename)
 
-
+dash._dash_renderer._set_react_version('18.2.0')
 # Créer une instance Dash en lui passant l'application Flask comme serveur
 dash_app = Dash(__name__, server=app, url_base_pathname='/dash/', external_stylesheets=[dbc.themes.DARKLY, "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"], suppress_callback_exceptions=True)
 
+
+# onhold_count = count_onhold_issues()
+
 # Créer la mise en page Dash
-dash_app.layout = html.Div([
+dash_app.layout = dmc.MantineProvider(
+    theme={"colorScheme": "light"},
+    children=html.Div([
     dcc.Location(id="url-redirect", refresh=True),
     html.Div(id='page-content'),
     dashboard_layout(),
     # dcc.Store(id='user-privileges'),
      
     html.A("Se déconnecter", href="/logout"),
+    dmc.Button(
+        "GitHub",
+        leftSection=DashIconify(icon="radix-icons:github-logo", width=20),
+        rightSection=dmc.Badge("3", circle=True, color="gray"),
+    ),
+    dcc.Interval(
+        id='interval-component',
+        interval=1000,  # 60 secondes
+        n_intervals=0
+    )
     
     # dbc.Row(
     #     dbc.Col(html.Div(id='session-info'), width={"size": 6, "offset": 3}),
     # ),
     # dcc.Location(id='url', refresh=False),
 ])
+)
 dashboard_callbacks(dash_app)
+
+# Callback to handle form submission
+@dash_app.callback(
+    Output('submit-status', 'children'),
+    [Input('submit-issue-button', 'n_clicks')],
+    [State('issue-text', 'value'), State('output-image-path', 'value')]
+)
+def submit_issue(n_clicks, text, image_path):
+    print(f"n_clicks: {n_clicks}, text: {text}, image_path: {image_path}")
+    if n_clicks and n_clicks > 0:
+
+        user_id = session.get('id') 
+        print(f"User ID: {user_id}")
+
+        if not text:
+            return html.Div(
+                        "Please describe the issue.",
+                        className='alert alert-danger'
+                    )
+            
+
+        if not image_path:
+            image_path = ''  # Utiliser un chemin vide par défaut si aucune image n'a été soumise
+        
+        # date = pd.Timestamp.now()  # Récupérer la date actuelle
+        # Insérer les données dans la base
+        data = {
+            'user_id': [user_id],
+            'text': [text],
+            'status': ['onhold'],
+            'screenshot_path': [image_path],
+            # 'created_at': [date]
+        }
+        df = pd.DataFrame(data)
+        insert_data(df, 'reclamations', 'append')
+        return html.Div(
+                        "Issue successfully submitted.",
+                        className='alert alert-success'
+                    )
+        
+    return ""
+
+# Génération des cartes dynamiques
+# def generate_issue_cards_from_db(status):
+#     issues = get_issues(status)
+#     print(issues)  # Récupérer les réclamations depuis la base de données
+#     issue_cards = []
+
+#     for issue in issues:
+#         issue_id = issue[0]
+#         issue_text = issue[1]
+#         image_url = issue[2]
+#         date = issue[3]
+#         first_name = issue[4]
+#         last_name = issue[5]
+
+#         card = dbc.Card([
+#             dbc.CardBody([
+#                 html.H5(f"Issue {issue_id}"),
+#                 html.P(issue_text),
+#                 dbc.Button("Mark as resolved", id={'type': 'resolve-btn', 'index': issue_id}),
+#             ]),
+#         ], id={'type': 'issue-card', 'index': issue_id})  # ID dynamique pour chaque carte
+
+#         issue_cards.append(card)
+
+#     return issue_cards
+
+def generate_issue_cards_from_db(status):
+    issues = get_issues(status)
+    issue_cards = []
+
+    if not issues:
+        return [html.P(f"No issues {status} available.", className="text-muted")]
+
+    for issue in issues:
+        issue_id = issue[0]
+        issue_text = issue[1]
+        image_url = issue[2]
+        date = issue[3]
+        first_name = issue[4]
+        last_name = issue[5]
+
+        # Si c'est une réclamation résolue
+        if status == 'resolved':
+            card = dbc.Card(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dbc.CardBody(
+                                    [
+                                        html.H4(f"{first_name} {last_name}", className="card-title"),
+                                        html.P(issue_text, className="card-text"),
+                                        html.Small(f"{date}", className="card-text text-muted"),
+                                        html.Br(),
+                                        html.Span("Resolved", className="badge badge-success"),  # Badge pour les réclamations résolues
+                                    ]
+                                ),
+                                className="col-md-auto",
+                            ),
+                            dbc.Col(
+                                dbc.CardImg(
+                                    src=image_url, top=True,
+                                    style={
+                                        'maxWidth': '200px', 
+                                        'maxHeight': '200px',
+                                        'position': 'absolute',
+                                        'right': '0',
+                                        'top': '10px',
+                                        'transform': 'translateY(-110%)',
+                                    },
+                                    className="img-fluid rounded-start"
+                                ),
+                                style={'position': 'relative', 'width': '100%'},
+                                className="col-md-auto"
+                            ) if image_url else None
+                        ],
+                        className="g-0 d-flex align-items-center",
+                    )
+                ], id={'type': 'issue-card', 'index': issue_id},
+                className="mb-3",
+            )
+        else:
+            card = dbc.Card(
+                [
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dbc.CardBody(
+                                    [
+                                        html.H4(f"{first_name} {last_name}", className="card-title"),
+                                        html.P(issue_text, className="card-text"),
+                                        html.Small(f"{date}", className="card-text text-muted"),
+                                        html.Br(),
+                                        dbc.Button("Mark as Resolved", id={'type': 'resolve-btn', 'index': issue_id}, n_clicks=0, color="success")
+                                    ]
+                                ),
+                                className="col-md-auto",
+                            ),
+                            dbc.Col(
+                                dbc.CardImg(
+                                    src=image_url, top=True,
+                                    style={
+                                        'maxWidth': '200px', 
+                                        'maxHeight': '200px',
+                                        'position': 'absolute',
+                                        'right': '0',
+                                        'top': '10px',
+                                        'transform': 'translateY(-110%)',
+                                    },
+                                    className="img-fluid rounded-start"
+                                ),
+                                style={'position': 'relative', 'width': '100%'},
+                                className="col-md-auto"
+                            ) if image_url else None
+                        ],
+                        className="g-0 d-flex align-items-center",
+                    )
+                ], id={'type': 'issue-card', 'index': issue_id},
+                className="mb-3",
+            )
+        
+        issue_cards.append(card)
+    
+    return issue_cards
+
+
+@dash_app.callback(
+    [Output('onhold-count', 'children'),
+     Output('unresolved-issues', 'children'),
+     Output('resolved-issues', 'children'),
+     Output('open-issues-button', 'rightSection')],
+    [Input('interval-component', 'n_intervals')]
+)
+def update_display(n_intervals):
+    onhold_count = count_onhold_issues()
+    unresolved_issues = generate_issue_cards_from_db('onhold')
+    resolved_issues = generate_issue_cards_from_db('resolved')
+    
+    badge = None
+    if onhold_count > 0:
+        badge = dmc.Badge(str(onhold_count), circle=True, color="red")
+
+    return onhold_count, unresolved_issues, resolved_issues, badge
+
+
+# Fonction pour marquer comme résolu
+@dash_app.callback(
+    Output({'type': 'issue-card', 'index': MATCH}, 'children'),
+    Input({'type': 'resolve-btn', 'index': MATCH}, 'n_clicks'),
+    State({'type': 'resolve-btn', 'index': MATCH}, 'id')
+)
+def mark_issue_resolved(n_clicks, button_id):
+    if not n_clicks:
+        return dash.no_update
+
+    issue_id = button_id['index']
+    update_issue_status(issue_id)  # Mettre à jour la réclamation en résolu
+
+    # Retourne un message ou met à jour la carte après résolution
+    return f"Issue {issue_id} marked as resolved"
+
 
 # #session
 # @dash_app.callback(
@@ -115,6 +336,8 @@ def update_user_management_button(pathname):
             href='/user_management'  # Lien vers la route Flask
         )
     return ''
+
+
 
 @dash_app.callback(
     [Output('upload-data', 'style'),

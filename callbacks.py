@@ -13,6 +13,8 @@ import io
 import datetime
 from sqlalchemy import create_engine
 from sqlalchemy import text
+import base64
+import os
 
 # def register_callbacks(dash_app):
 #     @dash_app.callback(
@@ -44,6 +46,60 @@ from sqlalchemy import text
 
 
 def dashboard_callbacks(dash_app):
+    @dash_app.callback(
+        Output("resolve-issues-modal", "is_open"),
+        [Input("open-issues-button", "n_clicks"), Input("close-issues-modal", "n_clicks")],
+        [State("resolve-issues-modal", "is_open")]
+    )
+    def toggle_issues_modal(open_clicks, close_clicks, is_open):
+        if open_clicks or close_clicks:
+            return not is_open
+        return is_open
+
+    # Callback to open/close the issue modal
+    @dash_app.callback(
+        Output("issue-modal", "is_open"),
+        [Input("open-modal-button", "n_clicks"), Input("submit-issue-button", "n_clicks")],
+        [State("issue-modal", "is_open")]
+    )
+    def toggle_modal(n1, n2, is_open):
+        if n1 or n2:
+            return not is_open
+        return is_open
+    
+
+    @dash_app.callback(
+    [Output('output-image-upload', 'children'), Output('output-image-path', 'value')],
+    [Input('upload-image', 'contents')],
+    [State('upload-image', 'filename'), State('upload-image', 'last_modified')]
+    )
+    def upload_image(contents, filename, last_modified):
+        # print(contents)
+        if contents:
+            # print("contents is true")
+            # Decode the image data
+            data = contents.split(',')[1]
+            image_data = base64.b64decode(data)
+            assets_path = 'assets/uploads'
+
+
+            # Ensure 'uploads' directory exists
+            if not os.path.exists(assets_path):
+                os.makedirs(assets_path)
+            
+            # Define the file path
+            file_path = os.path.join(assets_path, filename)
+                        
+            # Save the file
+            with open(file_path, 'wb') as f:
+                f.write(image_data)
+            
+            # Display uploaded image as feedback
+            return html.Img(src=contents, style={'width': '100%'}), file_path
+
+        return "", ""
+
+
     # Callback pour gérer la modale
     @dash_app.callback(
         [Output("logout-modal", "is_open"),

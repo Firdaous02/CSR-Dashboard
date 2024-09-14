@@ -11,8 +11,13 @@ import io
 import datetime
 from sqlalchemy import create_engine
 from sqlalchemy import text
+import dash_mantine_components as dmc
+from dash_iconify import DashIconify
+from db import count_onhold_issues
+
 
 from flask import session
+
 
 # Define the figures for the graphs
 
@@ -85,6 +90,7 @@ from flask import session
 # Sidebar definition
 
 def dashboard_layout():
+    onhold_count = count_onhold_issues()
     # role = session.get('role', None)
     sidebar = dbc.Offcanvas(
     html.Div(
@@ -207,6 +213,32 @@ def dashboard_layout():
                                     ),
                                     width="auto"
                                 ),
+                                dbc.Col(
+                                    dbc.Button(
+                                        [html.I(className="fas fa-exclamation-circle"), " Report an Issue"],  # Icon with the button text
+                                        id="open-modal-button", n_clicks=0, color="danger", className="me-1"
+                                    ),
+                                    width="auto"
+                                ),
+                                # dbc.Col(
+                                #     dbc.Button(
+                                #         [html.I(className="fas fa-exclamation-circle"), " Issues"],  # Icon with the button text
+                                #         id="open-issues-button", n_clicks=0, color="danger", className="me-1"
+                                #     ),
+                                #     width="auto"
+                                # ),
+                                dbc.Col(
+                                    dmc.Button(
+                                        "Issues",
+                                        leftSection=DashIconify(icon="mdi:git-issue", width=20),
+                                        rightSection=None,  # Initialement None, sera remplacé par le badge si nécessaire
+                                        id="open-issues-button",
+                                        n_clicks=0,
+                                    ),
+                                    width="auto"
+                                ),
+                                html.Div(id='onhold-count', style= {'display': 'none'}),
+
                             ],
                             align="center",
                             className="g-0",
@@ -300,6 +332,62 @@ def dashboard_layout():
         size="lg",
         is_open=False
     )
+
+    issue_modal= dbc.Modal(
+        [
+            dbc.ModalHeader("Report an Issue"),
+            dbc.ModalBody([
+                dbc.Input(id="issue-text", placeholder="Describe the issue...", type="text"),
+                html.Br(),
+                dcc.Upload(
+                    id='upload-image',
+                    children=html.Div([
+                        'Drag and Drop or ',
+                        html.A('Select a Screenshot')
+                    ]),
+                    style={
+                        'width': '100%',
+                        'height': '60px',
+                        'lineHeight': '60px',
+                        'borderWidth': '1px',
+                        'borderStyle': 'dashed',
+                        'borderRadius': '5px',
+                        'textAlign': 'center',
+                        'margin': '10px'
+                    },
+                    # Allow multiple files to be uploaded
+                    multiple=False
+                ),
+                html.Div(id='output-image-upload'),
+                dcc.Input(id='output-image-path', type='hidden')
+            ]),
+            dbc.ModalFooter(
+                dbc.Button("Submit", id="submit-issue-button", color="primary")
+            ),
+        ],
+        id="issue-modal",
+        is_open=False,
+    )
+    
+    resolve_issue_modal = dbc.Modal(
+        [
+            dbc.ModalHeader("Manage Issues"),
+            dbc.ModalBody([
+                # Section for Onhold Issues
+                html.H4("On Hold Issues", style={"margin-top": "10px"}),
+                html.Div(id='unresolved-issues'),
+                html.Hr(),
+                # Section for Resolved Issues
+                html.H4("Resolved Issues", style={"margin-top": "10px"}),
+                html.Div(id='resolved-issues'),
+            ]),
+            dbc.ModalFooter(
+                dbc.Button("Close", id="close-issues-modal", className="ml-auto")
+            )
+        ],
+        id="resolve-issues-modal",
+        is_open=False
+    )
     from datetime import datetime
     current_year = datetime.now().year
 
@@ -318,6 +406,9 @@ def dashboard_layout():
             edit_modal,  # Add the edit modal
             dcc.Download(id="download-dataframe-xlsx"),
             export_modal,  # Add the export modal
+            issue_modal,
+            html.Div(id='submit-status'),
+            resolve_issue_modal,
             html.Div(
                 style={'padding': '20px'},  # Adjust the padding
                 children=[

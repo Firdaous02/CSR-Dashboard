@@ -5,7 +5,8 @@ import pandas as pd
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from flask import flash
-
+import dash_bootstrap_components as dbc
+from dash import html
 
 
 # Connexion à la base de données
@@ -178,5 +179,45 @@ def add_user_db(email, first_name, last_name, role, hashed_password, privileges)
     finally:
         session.close()
 
+# Function to add the issue to the SQL Server database
+def add_issue(user_id, text):
+    cursor = connection.cursor()
+    query = '''INSERT INTO issues (user_id, description, status) VALUES (?, ?, ?)'''
+    cursor.execute(query, (user_id, text, 'Pending'))
+    connection.commit()
+    connection.close()
 
 
+def count_onhold_issues():
+    with engine.connect() as connection:
+        result = connection.execute(
+            text("SELECT COUNT(*) FROM reclamations WHERE status = :status"),
+            {"status": "onhold"}
+        )
+        count = result.scalar()
+    return count
+
+# Function to get issues from the database
+def get_issues(status):
+    s = Session()  # Crée une nouvelle instance de session
+    try:
+        query = text("SELECT reclamations.id, reclamations.text, reclamations.screenshot_path, reclamations.created_at, users.first_name, users.last_name FROM reclamations JOIN users ON reclamations.user_id = users.id WHERE reclamations.status = :status;")
+        result = s.execute(query, {'status': status}).fetchall()
+        return result  # Retourne les résultats sous forme de liste de tuples
+    finally:
+        s.close()
+
+
+def update_issue_status(issue_id):
+    # Ouvre une nouvelle session
+    s = Session()  
+    try:
+        # Utiliser la fonction `text()` pour la requête SQL brute
+        query = text("UPDATE reclamations SET status='resolved' WHERE id=:issue_id")
+        s.execute(query, {'issue_id': issue_id})  # Passe les paramètres de manière sécurisée
+        s.commit()  # Valide la transaction
+    except Exception as e:
+        s.rollback()  # Si une erreur survient, annuler la transaction
+        print(f"Erreur: {e}")
+    finally:
+        s.close()
