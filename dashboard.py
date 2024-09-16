@@ -216,7 +216,8 @@ def dashboard_layout():
                                 dbc.Col(
                                     dbc.Button(
                                         [html.I(className="fas fa-exclamation-circle"), " Report an Issue"],  # Icon with the button text
-                                        id="open-modal-button", n_clicks=0, color="danger", className="me-1"
+                                        id="open-modal-button", n_clicks=0, color="danger", className="me-1",
+                                        style={'display': 'none'},  # Hidden by default
                                     ),
                                     width="auto"
                                 ),
@@ -234,6 +235,7 @@ def dashboard_layout():
                                         rightSection=None,  # Initialement None, sera remplacé par le badge si nécessaire
                                         id="open-issues-button",
                                         n_clicks=0,
+                                        style={'display': 'none'},  # Hidden by default
                                     ),
                                     width="auto"
                                 ),
@@ -402,7 +404,7 @@ def dashboard_layout():
             # dcc.Location(id='url'),
             dcc.Store(id='nclicks-store'),
             html.Div(id='output-data-upload'),
-            html.Div(id='output-message', className='alert-message'),
+            html.Div(id='monthly-message'),
             edit_modal,  # Add the edit modal
             dcc.Download(id="download-dataframe-xlsx"),
             export_modal,  # Add the export modal

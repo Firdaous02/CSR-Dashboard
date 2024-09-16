@@ -148,63 +148,60 @@ def dashboard_callbacks(dash_app):
         return is_open
 
     def parse_contents(contents, filename):
-        if 'Import Data' not in privileges.split(','):
-            return html.Div('You do not have the necessary privileges to perform this action.',
-                            className='alert alert-danger'
-                            )
-        else:
-            content_type, content_string = contents.split(',')
-            decoded = base64.b64decode(content_string)
-            
-            try:
-                if 'xls' in filename:
-                    df = pd.read_excel(io.BytesIO(decoded))
-                else:
-                    return html.Div(
-                        'File format not supported.',
-                        className='alert alert-danger'
-                    )
-            except Exception as e:
+
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+        
+        try:
+            if 'xls' in filename:
+                df = pd.read_excel(io.BytesIO(decoded))
+            else:
                 return html.Div(
-                    f'There was an error processing this file: {str(e)}',
+                    'File format not supported.',
                     className='alert alert-danger'
                 )
-            
-            try:
-                # Créez la colonne "unique_id" en combinant les valeurs de six colonnes
-                df['unique_id'] = (
-                df['OFFICE'].astype(str) + '_' +
-                df['FISCAL_YEAR'].astype(str) + '_' +
-                df['MONTH'].astype(str) + '_' +
-                df['SOLD_TO'].astype(str) + '_' +
-                df['FIRST_NAME'].astype(str) + '_' +
-                df['LAST_NAME'].astype(str)
-                )
-                # Récupérer les unique_id existants dans la base de données
-                fetch_data_query = "SELECT unique_id FROM DATA"
-                existing_ids = fetch_data(fetch_data_query)
-                existing_ids_set = set(existing_ids['unique_id'])
-                
-                # Filtrer le DataFrame pour ne conserver que les nouveaux enregistrements
-                df_to_insert = df[~df['unique_id'].isin(existing_ids_set)]
-                
-                if not df_to_insert.empty:
-                    # Insérer les nouveaux enregistrements
-                    insert_data(df_to_insert, 'DATA', 'append')
-                else:
-                    return html.Div(
-                        'No new data to insert. All records already exist in the database.',
-                            className='alert alert-info'
-                        )
-            except Exception as e:
-                return html.Div(
-                    f'An error occurred while inserting data into the database: {str(e)}',
-                    className='alert alert-danger'
-                )
+        except Exception as e:
             return html.Div(
-                'Data successfully inserted into the database.',
-                className='alert alert-success'
+                f'There was an error processing this file: {str(e)}',
+                className='alert alert-danger'
             )
+        
+        try:
+            # Créez la colonne "unique_id" en combinant les valeurs de six colonnes
+            df['unique_id'] = (
+            df['OFFICE'].astype(str) + '_' +
+            df['FISCAL_YEAR'].astype(str) + '_' +
+            df['MONTH'].astype(str) + '_' +
+            df['SOLD_TO'].astype(str) + '_' +
+            df['FIRST_NAME'].astype(str) + '_' +
+            df['LAST_NAME'].astype(str)
+            )
+            # Récupérer les unique_id existants dans la base de données
+            fetch_data_query = "SELECT unique_id FROM DATA"
+            existing_ids = fetch_data(fetch_data_query)
+            existing_ids_set = set(existing_ids['unique_id'])
+            
+            # Filtrer le DataFrame pour ne conserver que les nouveaux enregistrements
+            df_to_insert = df[~df['unique_id'].isin(existing_ids_set)]
+            
+            if not df_to_insert.empty:
+                # Insérer les nouveaux enregistrements
+                insert_data(df_to_insert, 'DATA', 'append')
+            else:
+                return html.Div(
+                    'No new data to insert. All records already exist in the database.',
+                        className='alert alert-info'
+                    )
+        except Exception as e:
+            return html.Div(
+                f'An error occurred while inserting data into the database: {str(e)}',
+                className='alert alert-danger'
+            )
+        return html.Div(
+            'Data successfully inserted into the database.',
+            className='alert alert-success'
+        )
+
     @dash_app.callback(Output('output-data-upload', 'children'),
         [Input('upload-data', 'contents')],
         [State('upload-data', 'filename')])
@@ -327,12 +324,29 @@ def dashboard_callbacks(dash_app):
         ],
         [
             Input('filter-dropdown', 'value'),
-            Input('fiscal-year-input-filter', 'value')
+            Input('fiscal-year-input-filter', 'value'),
+            Input('interval-component', 'n_intervals')
         ]
     )
 
-    def update_graphs(filter_value, fiscal_year):
+    def update_graphs(filter_value, fiscal_year, n_intervals):
         fiscal_year_query = f"((FISCAL_YEAR = '{fiscal_year - 1}' and MONTH in ('OCTOBER', 'NOVEMBER', 'DECEMBER') ) OR (FISCAL_YEAR= '{fiscal_year}' and MONTH in ('JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER')))"
+
+        # Dictionnaire pour convertir les mois en nombres
+        month_order = {
+            'OCTOBER': 1,
+            'NOVEMBER': 2,
+            'DECEMBER': 3,
+            'JANUARY': 4,  
+            'FEBRUARY': 5,
+            'MARCH': 6,
+            'APRIL': 7,
+            'MAY': 8,
+            'JUNE': 9,
+            'JULY': 10,
+            'AUGUST': 11,
+            'SEPTEMBER': 12
+        }
 
         #Pie graph
         query_pie = f"SELECT OVERALL_SATISFACTION, COUNT(OVERALL_SATISFACTION) AS 'Rating'FROM DATA WHERE OVERALL_SATISFACTION IS NOT NULL AND {fiscal_year_query} GROUP BY OVERALL_SATISFACTION;"
@@ -416,12 +430,16 @@ def dashboard_callbacks(dash_app):
                 font=dict(color='white')
             )
             #Evolution bar graph BY GLOBAL CUSTOMER
-            query_bar = f"SELECT MONTH, GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER, MONTH ORDER BY MONTH;"
+            query_bar = f"SELECT MONTH, GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER, MONTH;"
             df = fetch_data(query_bar)
 
             df['color'] = df['CSI'].apply(lambda x: 'blue' if x > 14 else 'red')
+            df['MONTH_ORDER'] = df['MONTH'].map(month_order)
 
-            bar_evolution_fig = px.bar(df, 
+            # Trier les données par ordre des mois
+            df_sorted = df.sort_values(by='MONTH_ORDER')
+
+            bar_evolution_fig = px.bar(df_sorted, 
                 x='MONTH', 
                 y='CSI', 
                 color='GLOBAL_CUSTOMER',  # Use the color column for coloring
@@ -484,9 +502,15 @@ def dashboard_callbacks(dash_app):
             )
             
             #Evolution bar graph
-            query_bar = f"SELECT MONTH, SOLD_TO_NAME, CUSTOMER_SATISFACTION_INDEX 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER BY MONTH;"
+            query_bar = f"SELECT MONTH, SOLD_TO_NAME, CUSTOMER_SATISFACTION_INDEX 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query};"
             df = fetch_data(query_bar)
-            bar_evolution_fig = px.bar(df, 
+            # Ajouter une colonne avec l'ordre des mois
+            df['MONTH_ORDER'] = df['MONTH'].map(month_order)
+
+            # Trier les données par ordre des mois
+            df_sorted = df.sort_values(by='MONTH_ORDER')
+
+            bar_evolution_fig = px.bar(df_sorted, 
                 x='MONTH', 
                 y='CSI', 
                 color='SOLD_TO_NAME',  # Use the color column for coloring
@@ -507,10 +531,16 @@ def dashboard_callbacks(dash_app):
             ) 
         elif filter_value == 'office':
             #Line graph BY OFFICE
-            query_line = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE ORDER BY MONTH, OFFICE;"
+            query_line = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE OFFICE;"
             df = fetch_data(query_line)
+            # Ajouter une colonne avec l'ordre des mois
+            df['MONTH_ORDER'] = df['MONTH'].map(month_order)
+
+            # Trier les données par ordre des mois
+            df_sorted = df.sort_values(by='MONTH_ORDER')
+
             line_fig = px.line(
-                df, 
+                df_sorted, 
                 x='MONTH', 
                 y='RES-RATE', 
                 color='OFFICE',
@@ -545,9 +575,14 @@ def dashboard_callbacks(dash_app):
             )
             
             #Evolution bar graph BY OFFICE
-            query_bar = f"SELECT MONTH, OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH ORDER BY MONTH;"
+            query_bar = f"SELECT MONTH, OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH;"
             df = fetch_data(query_bar)
-            bar_evolution_fig = px.bar(df, 
+            # Ajouter une colonne avec l'ordre des mois
+            df['MONTH_ORDER'] = df['MONTH'].map(month_order)
+
+            # Trier les données par ordre des mois
+            df_sorted = df.sort_values(by='MONTH_ORDER')
+            bar_evolution_fig = px.bar(df_sorted, 
                 x='MONTH', 
                 y='CSI', 
                 color='OFFICE',  # Use the color column for coloring
@@ -594,6 +629,20 @@ def dashboard_callbacks(dash_app):
         if not ctx.triggered:
             raise dash.exceptions.PreventUpdate
         
+        month_order = {
+            'JANUARY': 1,
+            'FEBRUARY': 2,
+            'MARCH': 3,
+            'APRIL': 4,
+            'MAY': 5,
+            'JUNE': 6,
+            'JULY': 7,
+            'AUGUST': 8,
+            'SEPTEMBER': 9,
+            'OCTOBER': 10,
+            'NOVEMBER': 11,
+            'DECEMBER': 12
+        }
         button_id = ctx.triggered[0]['prop_id'].split('.')[0]
         
         fiscal_year_query = f"((FISCAL_YEAR = '{fiscal_year - 1}' and MONTH in ('OCTOBER', 'NOVEMBER', 'DECEMBER') ) OR (FISCAL_YEAR= '{fiscal_year}' and MONTH in ('JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER')))"
@@ -601,21 +650,21 @@ def dashboard_callbacks(dash_app):
         # Construire la condition WHERE basée sur les filtres
         if filter_value == 'office':
             filter_column = 'OFFICE'
-            line_query = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE ORDER BY MONTH, OFFICE;"
+            line_query = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE ORDER BY OFFICE;"
             bar_query = f"SELECT OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY OFFICE;"
-            evolution_bar_query = f"SELECT MONTH, OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH ORDER BY MONTH;"
+            evolution_bar_query = f"SELECT MONTH, OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH;"
 
         elif filter_value == 'ship_to':
             filter_column = 'SOLD_TO_NAME'
             line_query = f"SELECT {filter_column}, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY {filter_column}"
             bar_query = f"SELECT {filter_column}, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY {filter_column}"
-            evolution_bar_query = f"SELECT MONTH, {filter_column}, CUSTOMER_SATISFACTION_INDEX AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER BY MONTH, {filter_column};"
+            evolution_bar_query = f"SELECT MONTH, {filter_column}, CUSTOMER_SATISFACTION_INDEX AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER {filter_column};"
 
         elif filter_value == 'global':
             filter_column = 'GLOBAL_CUSTOMER'
             line_query = f"SELECT {filter_column}, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY {filter_column}"
             bar_query = f"SELECT {filter_column}, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY {filter_column}"
-            evolution_bar_query = f"SELECT MONTH, {filter_column}, CUSTOMER_SATISFACTION_INDEX AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER BY MONTH, {filter_column};"
+            evolution_bar_query = f"SELECT MONTH, {filter_column}, CUSTOMER_SATISFACTION_INDEX AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER BY {filter_column};"
 
         else:
             filter_column = None
@@ -636,10 +685,17 @@ def dashboard_callbacks(dash_app):
         elif button_id == "export-comments":
             comments_query = f"SELECT OFFICE, FISCAL_YEAR, MONTH, GLOBAL_CUSTOMER, concat(FIRST_NAME, ' ',LAST_NAME) as name, ADDITIONNAL_COMMENTS from DATA WHERE ADDITIONNAL_COMMENTS is not null  AND {fiscal_year_query};"
             df = fetch_data(comments_query)
+            df['MONTH_ORDER'] = df['MONTH'].map(month_order)
+            df = df.sort_values(by='MONTH_ORDER')
+
             filename = f"Comments_{fiscal_year}.xlsx"
         
         elif button_id == "export-line":
             df = fetch_data(line_query)
+            if filter_value == 'office':
+                df['MONTH_ORDER'] = df['MONTH'].map(month_order)
+                df = df.sort_values(by='MONTH_ORDER')
+
             filename = f"Line_Graph_Data_{filter_column}_{fiscal_year}.xlsx"
         
         elif button_id == "export-bar":
@@ -649,6 +705,8 @@ def dashboard_callbacks(dash_app):
 
         elif button_id == "export-evolution-bar":
             df = fetch_data(evolution_bar_query)
+            df['MONTH_ORDER'] = df['MONTH'].map(month_order)
+            df = df.sort_values(by='MONTH_ORDER')
             filename = f"Evolution_Bar_Graph_Data_{filter_column}_{fiscal_year}.xlsx"
         
         # Exporter les données au format Excel

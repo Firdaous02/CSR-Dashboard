@@ -1,6 +1,6 @@
 import json
 from flask import Flask, session, redirect, url_for, request, render_template, flash, send_from_directory, jsonify
-from dash import Dash, html, dcc, Output, Input, dash, State, MATCH, ALL
+from dash import Dash, html, dcc, Output, Input, dash, State, MATCH, ALL, no_update
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
 from dash_iconify import DashIconify
@@ -11,7 +11,7 @@ import os
 from db import get_all_users, get_user_by_email, update_user_in_db, delete_user_from_db, add_user_db, insert_data, update_table
 from werkzeug.security import generate_password_hash
 import pandas as pd
-from db import verify_user, add_issue, update_issue_status, get_issues
+from db import verify_user, add_issue, update_issue_status, get_issues, check_missing_months_in_db
 from db import fetch_data
 from db import insert_data
 import plotly.express as px
@@ -324,17 +324,27 @@ def mark_issue_resolved(n_clicks, button_id):
 #         return "No session role found."
 
 @dash_app.callback(
-    Output('user-management-div', 'children'),
+    [Output('open-issues-button', 'style'),
+    Output('open-modal-button', 'style'),
+    Output('user-management-div', 'children')],
     [Input('url', 'pathname')]
 )
 def update_user_management_button(pathname):
     role = session.get('role')
+    issues_button_style = {'display': 'none'}
+    report_issue_button_style = {'display': 'none'}
+
     if role == 'admin':
+        issues_button_style = {'display': 'inline-block'}
         # Ajoutez un lien qui redirige vers Flask
-        return html.A(
+        return issues_button_style, report_issue_button_style, html.A(
             dbc.Button("User Management", id="user-management-button", color='primary'),
             href='/user_management'  # Lien vers la route Flask
         )
+    elif role == 'user':
+        report_issue_button_style = {'display': 'inline-block'}
+
+        return issues_button_style, report_issue_button_style, ''
     return ''
 
 
@@ -342,26 +352,35 @@ def update_user_management_button(pathname):
 @dash_app.callback(
     [Output('upload-data', 'style'),
      Output('edit-button', 'style'),
+     Output('monthly-message', 'children'),
+     Output('monthly-message', 'style')
      ],
-    [Input('url', 'pathname')],
+    [Input('url', 'pathname'),
+    Input('interval-component', 'n_intervals')],
 )
-def check_privileges(pathname):
+def check_privileges(pathname, n_intervals):
     # Récupérer les privilèges de la session Flask
     user_privileges = session.get('privileges', [])
     
-    message = ""
+    message = ''
     upload_style = {'display': 'none'}
     edit_style = {'display': 'none'}
+    message_style = {'display': 'none'}
     
     # Vérifier les privilèges pour l'importation de données
     if 'Import Data' in user_privileges:
         upload_style = {'display': 'inline-block'}
+        check = check_missing_months_in_db()
+        if check:
+            message_style = {'display': 'block'}
+        message = html.Div(
+            check, className='alert alert-danger')
 
     # Vérifier les privilèges pour l'édition des données
     if 'Edit Data' in user_privileges:
         edit_style = {'color': 'black', 'display': 'inline-block'}
     
-    return upload_style, edit_style
+    return upload_style, edit_style, message, message_style
 
 # @dash_app.callback(
 #     [
@@ -677,6 +696,43 @@ def check_privileges(pathname):
 #         return '/user_management'  # URL de la page user_management
 #     return dash.no_update
 
+@app.route('/user_management', methods=['GET'])
+def user_management_search():
+    print("Route '/user_management' reached")
+    search_query = request.args.get('search', '').lower()
+    print(f"Search query: '{search_query}'")
+
+    # Transformation des tuples en dictionnaires
+    users_tuples = get_all_users()
+    users = [
+        {
+            'ID': user[0],
+            'FIRST_NAME': user[1],
+            'LAST_NAME': user[2],
+            'ROLE': user[3],
+            'EMAIL': user[4],
+            'PASSWORD': user[5],
+            'PRIVILEGES': user[6]
+        }
+        for user in users_tuples
+    ]
+    print("All users:", users)
+
+    # Si une recherche est effectuée, filtrer les utilisateurs en fonction de la requête
+    if search_query:
+        filtered_users = [
+            user for user in users if
+            search_query in user['EMAIL'].lower() or
+            search_query in user['FIRST_NAME'].lower() or
+            search_query in user['LAST_NAME'].lower()
+        ]
+        print("Filtered users:", filtered_users)
+    else:
+        filtered_users = users
+
+    return render_template('user_management.html', users=filtered_users, request=request)
+
+
 @app.route('/user_management')
 def user_management():
     if session.get('role') != 'admin':
@@ -768,6 +824,10 @@ def add_user():
     return render_template('add_user.html')
 
 
+
+@app.route('/test')
+def test_route():
+    return "Test route is working!"
 
 # Page d'accueil qui redirige vers le login
 @app.route('/')

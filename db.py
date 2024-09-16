@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from flask import flash
 import dash_bootstrap_components as dbc
 from dash import html
-
+import datetime
 
 # Connexion à la base de données
 engine = create_engine('mssql+pyodbc://@localhost/CSIData?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes')
@@ -221,3 +221,34 @@ def update_issue_status(issue_id):
         print(f"Erreur: {e}")
     finally:
         s.close()
+    
+def check_missing_months_in_db():
+    current_year = datetime.datetime.now().year
+    current_month = datetime.datetime.now().month
+
+    # Requête pour récupérer les mois pour lesquels il y a des données dans l'année actuelle
+    query = text("SELECT DISTINCT MONTH FROM DATA WHERE FISCAL_YEAR = :current_year")
+    s = Session()  
+    try:
+        result = s.execute(query, {'current_year': current_year}).fetchall()
+        months_in_db = [row[0].upper() for row in result]  # Convertir les mois en majuscules pour correspondre
+
+        # Liste des mois de l'année (en anglais)
+        all_months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", 
+                    "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"]
+
+        # Mois jusqu'au mois actuel
+        valid_months = all_months[:current_month]
+
+        # Vérification des mois manquants
+        missing_months = [month for month in valid_months if month not in months_in_db]
+
+        # Si des mois sont manquants
+        if missing_months:
+            months_str = ", ".join(missing_months)
+            message = f"The following months are missing data: {months_str}. Please insert the missing data."
+        else:
+            message = ''
+    finally:
+        s.close()
+    return message
