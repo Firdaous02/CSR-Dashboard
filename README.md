@@ -7,9 +7,9 @@ To Configure the Database Connection:
 2. Replace the connection string with your own SQL Server credentials.
 
 The connection string looks like this:
-     ```python
+```python
      engine = create_engine('mssql+pyodbc://@localhost/CSIData?driver=ODBC+Driver+17+for+SQL+Server&trusted_connection=yes')
-     ```
+```
    - Replace the connection string with your own SQL Server credentials. Update the following:
      - `localhost`: The address of your SQL Server instance
      - `CSIData`: Your database name
