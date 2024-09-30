@@ -98,31 +98,6 @@ def update_user_in_db(email, updated_email, first_name, last_name, role, passwor
     finally:
         session.close()  # Toujours fermer la session après utilisation
 
-# def update_user_in_db(email, updated_email, first_name, last_name, role, password, privileges):
-#     try:
-#         # Créer la requête d'update
-#         query = text("""
-#             UPDATE users
-#             SET email = :updated_email, first_name = :first_name, last_name = :last_name, role = :role, password = :password, privileges = :privileges
-#             WHERE email = :email
-#         """)
-#         privileges_str = ','.join(privileges)  # Convertir la liste des privilèges en chaîne de caractères
-
-#         # Exécuter la requête d'update
-#         connection.execute(query, {
-#             'updated_email': updated_email,
-#             'first_name': first_name,
-#             'last_name': last_name,
-#             'role': role,
-#             'password': password,
-#             'privileges': privileges_str,
-#             'email': email
-#         })
-
-#         print("User updated successfully.")
-#     except Exception as e:
-#         print(f"Error updating user: {e}")
-
 
 def delete_user_from_db(email):
     session = Session()
