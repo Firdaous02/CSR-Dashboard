@@ -1,3 +1,12 @@
 .dropdown-option > .Select-menu-outer {
     color: #000 !important; /* couleur du texte noir */
 }
+.offcanvas-title {
+    font-size: 24px;  /* Same size as your H2 */
+    color: white;     /* Same color as your H2 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center; /* Centered title */
+    margin: 0 0 0 10px; 
+}
