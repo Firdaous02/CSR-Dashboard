@@ -92,177 +92,201 @@ from flask import session
 def dashboard_layout():
     onhold_count = count_onhold_issues()
     # role = session.get('role', None)
+    
     sidebar = dbc.Offcanvas(
     html.Div(
         [
-            html.H2("Dashboard", className="display-4"),
-            html.Hr(),
+            
+            # KPI Links
             dbc.Nav(
                 [
-                    dbc.NavLink("Customer Satisfaction Index (CSI)", href="#", active="exact"),
-                    dbc.NavLink("KPI2", href="#", active="exact"),
-                    dbc.NavLink("KPI3", href="#", active="exact"),
+                    dbc.NavLink("Customer Satisfaction Index (CSI)", href="#", active="exact", style={"border": "none", "color": "white"}),
+                    dbc.NavLink("KPI2", href="#", active="exact", style={"border": "none", "color": "white"}),
+                    dbc.NavLink("KPI3", href="#", active="exact", style={"border": "none", "color": "white"}),
                 ],
                 vertical=True,
                 pills=True,
+                className="mb-3"
             ),
-            html.Div(style={"flex-grow": 1}),  # Pour forcer le bouton de déconnexion à être en bas
+
+            # Spacer
+            html.Div(style={"flex-grow": 1}),
+            
+            dbc.Row([], style={"height": "300px"}),
+            # Divider line and buttons at the bottom
+            dbc.Row(
+                [
+                    dbc.Col(
+                        html.Div(id="user-management-div"),  # Hidden by default
+                        # dbc.Button("User Management", id="user-management-link", className="mr-2", style={"background-color": "#00b4ef", "border-color": "#00b4ef", "color": "black" }),
+                        width={"size": 12},
+                        className="mb-2 text-center"
+                    ),
+
+                ],
+            
+                style={"margin-top": "auto"},
+                
+            ),
+            # User Guide Button spanning both columns
             dbc.Row(
                 dbc.Col(
-                    html.Div(id='user-management-div'),
-                    width={"size": 6, "offset": 3},
+                    html.Div(id="user-guide-div"), #Hidden
+                    #dbc.Button("User Guide", id="user-guide-link", style={"background-color": "#00b4ef", "border-color": "#00b4ef", "color": "black", "width": "100%"}),
+                    width={"size": 12},
+                    className="mb-2 text-center"
                 )
             ),
-            dcc.Location(id='url', refresh=False),
 
-            # html.Div(
-            #     [
-            #         html.A("User Management", href="/user-management", style={"display": "block"})
-            #     ],
-            #     style={"display": "block"} if role == 'admin' else {"display": "none"}
-            # ),        
-            dbc.Button("Logout", id="logout-link", className="mt-5", style={"color": "white"}),  # Lien de déconnexion
+            dbc.Row(
+                [
+                dbc.Col(
+                        dbc.Button("Logout", id="logout-link", style={"background-color": "#ff7700", "border-color": "#ff7700", "color": "black", "width": "100%"}),
+                        width={"size": 12},
+                        className="mb-2 text-center"
+                    ),
+
+                ], 
+                style={"margin-top": "auto"},
+                
+            ),   
+            
+            # Location component for URL routing
+            dcc.Location(id='url', refresh=False),
         ],
         style={"height": "100%", "display": "flex", "flex-direction": "column"},  # Ajustement pour aligner en bas
     ),
+    title="Dashboard Menu",
     id="sidebar",
-    title="Menu",
     is_open=False,
-    style={"background-color": "#1e2c3c"},
+    style={"background-color": "#1B2131"},
+
     )
     logout_modal = dbc.Modal(
         [
-            dbc.ModalHeader("Confirm Logout"),
-            dbc.ModalBody("Do you really want to logout?"),
+            dbc.ModalHeader("Confirm Logout",style={"background-color": "#1B2131","family":"Trebuchet MS", "color": "white","border-bottom": "none"}),
+            dbc.ModalBody("Are you sure you want to logout?", style={ "background-color": "#1B2131", "color": "white","border-bottom": "none" }),
             dbc.ModalFooter(
                 [
-                    dbc.Button("Yes", id="confirm-logout", color="danger"),  # Bouton pour confirmer la déconnexion
-                    dbc.Button("No", id="cancel-logout", color="secondary"),  # Bouton pour annuler la déconnexion
-                ]
+                    dbc.Button("Yes", id="confirm-logout", style={"background-color": "#ff7700", "border-color": "#ff7700","color": "black",  }),  # Bouton pour confirmer la déconnexion
+                    dbc.Button("No", id="cancel-logout", style={"background-color": "#00b4ef","border-color": "#00b4ef","color": "black" }), # Bouton pour annuler la déconnexion
+
+                ],
+            style={"background-color": "#1B2131","border-top": "none"}
             ),
         ],
         id="logout-modal",
         is_open=False,
+
+
     )
     # Navbar with logo
     navbar = dbc.Navbar(
-        dbc.Container(
-            dbc.Row(
-                [
-                    # Left side with toggle, logo, and title
-                    dbc.Col(
-                        dbc.Row(
-                            [
-                                dbc.Col(dbc.Button("☰", id="open-sidebar", n_clicks=0, color="primary"), width="auto"),
-                                dbc.Col(html.Img(src="/assets/logo.png", height="40px"), width="auto"),
-                                dbc.Col(dbc.NavbarBrand("CSR Dashboard", className="ml-2"), width="auto"),
-                            ],
-                            align="center",
-                            className="g-0"
-                        ),
-                        width="auto"
+    dbc.Container(
+        dbc.Row(
+            [
+                # Left side with toggle, logo, and title
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            dbc.Col(dbc.Button("☰", id="open-sidebar", n_clicks=0, color="white"), width="auto"),
+                            dbc.Col(html.Img(src="/assets/logo.png", height="60px"), width="auto"),
+                            dbc.Col(dbc.NavbarBrand("Customer Service Dashboard", className="ml-2",style={"color":"white","font-size":"24px", "margin-left": "10px"}), width="auto"),
+                        ],
+                        align="center",
+                        className="g-0"
                     ),
-                    
-                    # Spacer in the middle
-                    dbc.Col(width=True),  # This column will expand to take the remaining space
-                    
-                    # Right side with buttons
-                    dbc.Col(
-                        dbc.Row(
-                            [
-                                dbc.Col(
-                                    dcc.Upload(
-                                        id='upload-data',
-                                        children=dbc.Button(
-                                            [
-                                                html.Img(src="/assets/import-icon.png", height="20px", style={"margin-right": "5px"}),
-                                                "Import Data"
-                                            ],
-                                            color="warning",
-                                            className="mr-2",
-                                            style={"color": "black"},  # Set text color to black
-                                            n_clicks=0
-                                        ),
-                                        style={'display': 'none'}
-                                    ),
-                                    width="auto"
-                                ),
-                                dbc.Col(
-                                    dbc.Button(
+                    width="auto"
+                ),
+                
+                # Spacer in the middle
+                dbc.Col(width=True),  # This column will expand to take the remaining space
+                
+                # Right side with buttons
+                dbc.Col(
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dcc.Upload(
+                                    id='upload-data',
+                                    children=dbc.Button(
                                         [
-                                            html.Img(src="/assets/edit-icon.png", height="20px", style={"margin-right": "5px"}),
-                                            "Edit"
+                                            html.Img(src="/assets/import-icon.png", height="20px", style={"margin-right": "5px"}),
+                                            "Import Data"
                                         ],
-                                        id="edit-button",  # Add id for the edit button
-                                        color="light",
-                                        className="mr-2",
-                                        style={"color": "black", 'display': 'none'}, # Set text color to black
+                                        color="warning",
+                                        style={"color": "black", "margin-right": "5px"},  # Increased margin between buttons
                                         n_clicks=0
                                     ),
-                                    width="auto"
+                                    style={'display': 'none'}
                                 ),
-                                dbc.Col(
-                                    dbc.Button(
-                                        [
-                                            html.Img(src="/assets/export-icon.png", height="20px", style={"margin-right": "5px"}),
-                                            "Export"
-                                        ],
-                                        id="export-button",
-                                        color="primary",
-                                        style={"color": "black"}  # Set text color to black
-                                    ),
-                                    width="auto"
+                                width="auto"
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    [
+                                        html.Img(src="/assets/edit-icon.png", height="20px", style={"margin-right": "5px"}),
+                                        "Edit"
+                                    ],
+                                    id="edit-button",
+                                    color="light",
+                                    style={"color": "black", 'display': 'none', "margin-right": "20px"}, # Increased margin between buttons
+                                    n_clicks=0
                                 ),
-                                dbc.Col(
-                                    dbc.Button(
-                                        [html.I(className="fas fa-exclamation-circle"), " Report an Issue"],  # Icon with the button text
-                                        id="open-modal-button", n_clicks=0, color="danger", className="me-1",
-                                        style={'display': 'none'},  # Hidden by default
-                                    ),
-                                    width="auto"
+                                width="auto"
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    [
+                                        html.Img(src="/assets/image.png", height="20px", style={"margin-right": "5px"}),
+                                        "Export"
+                                    ],
+                                    id="export-button",
+                                    color="primary",
+                                    style={"color": "white", "margin-right": "0px"}  # Increased margin between buttons
                                 ),
-                                # dbc.Col(
-                                #     dbc.Button(
-                                #         [html.I(className="fas fa-exclamation-circle"), " Issues"],  # Icon with the button text
-                                #         id="open-issues-button", n_clicks=0, color="danger", className="me-1"
-                                #     ),
-                                #     width="auto"
-                                # ),
-                                dbc.Col(
-                                    dmc.Button(
-                                        "Issues",
-                                        leftSection=DashIconify(icon="mdi:git-issue", width=20),
-                                        rightSection=None,  # Initialement None, sera remplacé par le badge si nécessaire
-                                        id="open-issues-button",
-                                        n_clicks=0,
-                                        style={'display': 'none'},  # Hidden by default
-                                    ),
-                                    width="auto"
+                                width="auto"
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    [html.I(className="fas fa-exclamation-circle"), " Report an Issue"],  # Icon with the button text
+                                    id="open-modal-button", n_clicks=0, color="danger", className="me-1",
+                                    style={'display': 'none'},  # Hidden by default
                                 ),
-                                html.Div(id='onhold-count', style= {'display': 'none'}),
-
-                            ],
-                            align="center",
-                            className="g-0",
-                            justify="end"
-                        ),
-                        width="auto"
+                                width="auto"
+                            ),
+                            dbc.Col(
+                                dmc.Button(
+                                    "Issues",
+                                    leftSection=DashIconify(icon="mdi:git-issue", width=20),
+                                    rightSection=None,  # Initially None, replaced by badge if necessary
+                                    id="open-issues-button",
+                                    n_clicks=0,
+                                    style={'display': 'none', 'margin-right': "20px"},  # Hidden by default, increased margin
+                                ),
+                                width="auto"
+                            ),
+                            html.Div(id='onhold-count', style= {'display': 'none'}),
+                        ],
+                        align="center",
+                        justify="end"
                     ),
-                ],
-                align="center",
-                className="g-0 flex-nowrap w-100"
-            ),
-            fluid=True,
+                    width="auto"
+                ),
+            ],
+            align="center",
+            className="g-0 flex-nowrap w-100"
         ),
-        color="dark",
-        dark=True,
-        className="mb-3",
-    )
+        fluid=True,
+    ),
+    color="#1B2131",
+    className="mb-3",
+)
 
     # Modal for editing data
     edit_modal = dbc.Modal(
         [
-            dbc.ModalHeader(dbc.ModalTitle("Edit Data")),
+            dbc.ModalHeader(dbc.ModalTitle("Edit Data"),style={"background-color": "#1B2131"}),
             dbc.ModalBody(
                 dash_table.DataTable(
                     id='edit-table',
@@ -272,10 +296,10 @@ def dashboard_layout():
                     style_table={'overflowX': 'auto'},
                     style_cell={'textAlign': 'left', 'color': 'black'},
                 ),
-                style={"maxHeight": "60vh", "overflowY": "auto"}
+                style={"maxHeight": "60vh", "overflowY": "auto","background-color": "#1B2131","border-top": "none"}
             ),
             dbc.ModalFooter(
-                dbc.Button("Save Changes", id="save-changes", className="ml-auto")
+                dbc.Button("Save Changes", id="save-changes", className="ml-auto", style={"background-color": "#00b4ef","border-color": "#00b4ef","color": "black"}),style={"background-color": "#1B2131","border-top": "none"}
             ),
         ],
         id="edit-modal",
@@ -284,7 +308,7 @@ def dashboard_layout():
 
     export_modal = dbc.Modal(
         [
-            dbc.ModalHeader(dbc.ModalTitle("Export Data Options")),
+            dbc.ModalHeader(dbc.ModalTitle("Export Data Options"),style={"background-color": "#1B2131"}),
             dbc.ModalBody(
                 [
                     dbc.RadioItems(
@@ -324,10 +348,10 @@ def dashboard_layout():
                             style={'margin-top': '10px', 'display': 'none'},  # Hidden by default
                             className='dropdown-option'
                         )
-                    ]
+                    ], style={"background-color": "#1B2131","border-top": "none"}
                 ),
             dbc.ModalFooter(
-                dbc.Button("Export", id="confirm-export", className="ml-auto")
+                dbc.Button("Export", id="confirm-export", className="ml-auto", style={"background-color": "#00b4ef","border-color": "#00b4ef","color": "black"}), style={"background-color": "#1B2131","border-top": "none"}
             ),
         ],
         id="export-modal",
@@ -337,7 +361,7 @@ def dashboard_layout():
 
     issue_modal= dbc.Modal(
         [
-            dbc.ModalHeader("Report an Issue"),
+            dbc.ModalHeader("Report an Issue", style={"background-color": "#1B2131"}),
             dbc.ModalBody([
                 dbc.Input(id="issue-text", placeholder="Describe the issue...", type="text"),
                 html.Br(),
@@ -362,9 +386,9 @@ def dashboard_layout():
                 ),
                 html.Div(id='output-image-upload'),
                 dcc.Input(id='output-image-path', type='hidden')
-            ]),
+            ],style={"background-color": "#1B2131"}),
             dbc.ModalFooter(
-                dbc.Button("Submit", id="submit-issue-button", color="primary")
+                dbc.Button("Submit", id="submit-issue-button", style={"background-color": "#00b4ef","border-color": "#00b4ef","color": "black"}), style={"background-color": "#1B2131"}
             ),
         ],
         id="issue-modal",
@@ -373,7 +397,7 @@ def dashboard_layout():
     
     resolve_issue_modal = dbc.Modal(
         [
-            dbc.ModalHeader("Manage Issues"),
+            dbc.ModalHeader(dbc.ModalTitle("Manage Issues"),style={"background-color": "#1B2131"}),
             dbc.ModalBody([
                 # Section for Onhold Issues
                 html.H4("On Hold Issues", style={"margin-top": "10px"}),
@@ -382,9 +406,9 @@ def dashboard_layout():
                 # Section for Resolved Issues
                 html.H4("Resolved Issues", style={"margin-top": "10px"}),
                 html.Div(id='resolved-issues'),
-            ]),
+            ], style={"background-color": "#1B2131"}),
             dbc.ModalFooter(
-                dbc.Button("Close", id="close-issues-modal", className="ml-auto")
+                dbc.Button("Close", id="close-issues-modal", className="ml-auto", style={"background-color": "#00b4ef","border-color": "#00b4ef","color": "black"}), style={"background-color": "#1B2131"}
             )
         ],
         id="resolve-issues-modal",
@@ -396,7 +420,7 @@ def dashboard_layout():
 
 
     dashboard_layout = html.Div(
-        style={'backgroundColor': '#1e2c3c', 'padding': '20px'},  # Set the background color and text color
+        style={'backgroundColor': '#131722', 'padding': '20px'},  # Set the background color and text color
         children=[
             navbar,  # Add the navbar with the logo
             sidebar,  # Add the sidebar
@@ -436,7 +460,8 @@ def dashboard_layout():
                                 placeholder=str(current_year),
                                 value=current_year,
                                 style={'color': '#000', 'display': 'block'},
-                                type='number'
+                                type='number',
+                                className="rounded"
                             ),
                             width=2,
                             className="d-flex align-items-center justify-content-center"
@@ -445,20 +470,33 @@ def dashboard_layout():
                     ]),
                     
                     dbc.Row([
-                        dbc.Col([html.Button("Exporter Line Graph", id="export-line", n_clicks=0),
-                                    dcc.Graph(id='line-graph')], width=6),
-                        dbc.Col([html.Button("Exporter Bar Graph", id="export-bar", n_clicks=0), dcc.Graph(id='bar-graph')], width=6),
+                        dbc.Col([html.A([
+                                            html.Img(src="/assets/image.png", height="20px", style={"margin-right": "5px"})
+                                            ], 
+                                            id="export-line", n_clicks=0),
+                                            dcc.Graph(id='line-graph')], width=6),
+                        dbc.Col([html.A([
+                                            html.Img(src="/assets/image.png", height="20px", style={"margin-right": "5px"})
+                                            ], id="export-bar", n_clicks=0), dcc.Graph(id='bar-graph')], width=6),
                     ]),
                     dbc.Row([
-                        dbc.Col([html.Button("Exporter Pie Graph", id="export-pie", n_clicks=0), dcc.Graph(id='pie-graph')], width=6),
-                        dbc.Col([html.Button("Exporter Treemap Graph", id="export-treemap", n_clicks=0), dcc.Graph(id='treemap-graph')], width=6),
+                        dbc.Col([html.A([
+                                            html.Img(src="/assets/image.png", height="20px", style={"margin-right": "5px"})
+                                            ], id="export-pie", n_clicks=0), dcc.Graph(id='pie-graph')], width=6),
+                        dbc.Col([html.A([
+                                            html.Img(src="/assets/image.png", height="20px", style={"margin-right": "5px"})
+                                            ], id="export-treemap", n_clicks=0), dcc.Graph(id='treemap-graph')], width=6),
                     ]),
                     dbc.Row([
-                        dbc.Col([html.Button("Exporter Evolution Bar Graph", id="export-evolution-bar", n_clicks=0), dcc.Graph(id='bar-evolution-graph')], width=12),
+                        dbc.Col([html.A([
+                                            html.Img(src="/assets/image.png", height="20px", style={"margin-right": "5px"})
+                                            ], id="export-evolution-bar", n_clicks=0), dcc.Graph(id='bar-evolution-graph')], width=12),
                     ]),
                     dbc.Row([
                         dbc.Col(
-                            [html.Button("Exporter Comments", id="export-comments", n_clicks=0),
+                            [html.A([
+                                            html.Img(src="/assets/image.png", height="20px", style={"margin-right": "5px"})
+                                            ], id="export-comments", n_clicks=0),
                             dash_table.DataTable(
                                 id='comments-table',
                                 style_table={'height': 'auto', 'overflowY': 'auto'},

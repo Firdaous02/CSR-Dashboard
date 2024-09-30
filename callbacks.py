@@ -351,30 +351,33 @@ def dashboard_callbacks(dash_app):
         #Pie graph
         query_pie = f"SELECT OVERALL_SATISFACTION, COUNT(OVERALL_SATISFACTION) AS 'Rating'FROM DATA WHERE OVERALL_SATISFACTION IS NOT NULL AND {fiscal_year_query} GROUP BY OVERALL_SATISFACTION;"
         df = fetch_data(query_pie)
-        custom_colors = ['#BE5B2D', '#D5692A', '#EB8204', '#FC9A22', '#FDB55E']
+        custom_colors = ['#ff7700', '#ff910c', '#ffaa17', '#ffc322', '#ffdc2d']
         pie_fig = px.pie(df, names='OVERALL_SATISFACTION', values='Rating', title="Overall Satisfaction", color_discrete_sequence=custom_colors )
+        pie_fig.update_traces(textfont=dict(color='black')  # Set the font color inside the pie chart to black
+        )
         pie_fig.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-            paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-            title_font=dict(size=20, color='white', family="Calibri"),  # Title font settings
-            legend_font=dict(color='white'),
-            font=dict(color='white')
+            paper_bgcolor='#1B2131',       # Light gray background for the entire chart
+            title_font=dict(size=20, color='white', family="Trebuchet MS"),  # Title font settings
+            legend_font=dict(color='white', family="Trebuchet MS"),
+            font=dict(color='white', family="Trebuchet MS")
         )
         
 
         #Tree map
-        query_treemap = f"SELECT GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
+        query_treemap = f"SELECT GLOBAL_CUSTOMER, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
         df = fetch_data(query_treemap)
-        df['color'] = df['CSI'].apply(lambda x: '#429EBD' if x > 14 else 'red')
+        df['color'] = df['CSI'].apply(lambda x: '#05D5FA' if x > 14 else '#ff7700')
         treemap_fig = px.treemap(df, path=['GLOBAL_CUSTOMER'], values='CSI',
             color='color',  # Use the color column for coloring
-            color_discrete_map={'#429EBD': '#429EBD', 'red': 'red'},  # Define color mapping
+            color_discrete_map={'#05D5FA': '#05D5FA', '#ff7700': '#ff7700'},  # Define color mapping
             title="Customer Satisfaction Index Treemap")
+        treemap_fig.update_traces(textfont=dict(color='black'))
         treemap_fig.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-            paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-            title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
-            legend_font=dict(color='white'),
+            paper_bgcolor='#1B2131',       # Light gray background for the entire chart
+            title_font=dict(size=20,color='white', family="Trebuchet MS"),  # Title font settings
+            legend_font=dict(color='black'),
             font=dict(color='black')
         )
             # Query for the comments
@@ -390,47 +393,48 @@ def dashboard_callbacks(dash_app):
 
             df = fetch_data(query_line)
 
-            line_fig = px.line(
+            area_fig = px.area(
                 df, 
                 x='GLOBAL_CUSTOMER', 
                 y='RES-RATE', 
                 labels={'RES-RATE': 'Response Rate (%)'},
                 title="Response Rate by Global Customer"
             )
-            line_fig.update_layout(
+            area_fig.update_traces(line_color='#05D5FA',  marker=dict(color='#05D5FA', size=8, symbol='circle') )
+            area_fig.update_layout(
                 xaxis_title='',  # Remove the x-axis label 
                 plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-                paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-                title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+                paper_bgcolor='#1B2131',       # Light gray background for the entire chart
+                title_font=dict(size=20,color='white', family="Trebuchet MS"),  # Title font settings
                 legend_font=dict(color='white'),
                 font=dict(color='white')
             )
 
             #Bar graph BY GLOBAL CUSTOMER
-            query_bar = f"SELECT GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
+            query_bar = f"SELECT GLOBAL_CUSTOMER, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
             df = fetch_data(query_bar)
 
-            df['color'] = df['CSI Average'].apply(lambda x: '#429EBD' if x > 14 else 'red')
+            df['color'] = df['CSI Average'].apply(lambda x: '#05D5FA' if x > 14 else '#ff7700')
 
             bar_fig = px.bar(df, 
                 x='GLOBAL_CUSTOMER', 
                 y='CSI Average', 
                 color='color',  # Use the color column for coloring
-                color_discrete_map={'#429EBD': '#429EBD', 'red': 'red'},  # Define color mapping
+                color_discrete_map={'#05D5FA': '#05D5FA', '#ff7700': '#ff7700'},  # Define color mapping
                 title="Customer Satisfaction Index by Global Customer"
             )
-            bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == 'blue' else '<= 14'))
+            bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == '#05D5FA' else '<= 14'))
 
             bar_fig.update_layout(
                 xaxis_title='',  # Remove the x-axis label 
                 plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-                paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-                title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+                paper_bgcolor='#1B2131',       # Light gray background for the entire chart
+                title_font=dict(size=20,color='white', family="Trebuchet MS"),  # Title font settings
                 legend_font=dict(color='white'),
                 font=dict(color='white')
             )
             #Evolution bar graph BY GLOBAL CUSTOMER
-            query_bar = f"SELECT MONTH, GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER, MONTH;"
+            query_bar = f"SELECT MONTH, GLOBAL_CUSTOMER, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER, MONTH;"
             df = fetch_data(query_bar)
 
             df['color'] = df['CSI'].apply(lambda x: 'blue' if x > 14 else 'red')
@@ -454,8 +458,8 @@ def dashboard_callbacks(dash_app):
                 xaxis_tickangle=-45,
                 bargap=0.05,
                 plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-                paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-                title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+                paper_bgcolor='#1B2131',       # Light gray background for the entire chart
+                title_font=dict(size=20,color='white', family="Trebuchet MS"),  # Title font settings
                 legend_font=dict(color='white'),
                 font=dict(color='white')
             )
@@ -463,30 +467,36 @@ def dashboard_callbacks(dash_app):
             #Line graph
             query_line = f"SELECT SOLD_TO_NAME, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY SOLD_TO_NAME;"
             df = fetch_data(query_line)
-            line_fig = px.line(
+            area_fig = px.area(
                 df, 
                 x='SOLD_TO_NAME', 
                 y='RES-RATE', 
                 labels={'RES-RATE': 'Response Rate (%)'},
                 title="Response Rate by Ship To"
             )
-            line_fig.update_layout(
+            area_fig.update_traces(line_color='#05D5FA',  marker=dict(color='#05D5FA', size=8, symbol='circle') )
+            area_fig.update_layout(
                 xaxis_title='',  # Remove the x-axis label 
+                plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+                paper_bgcolor='#1B2131',       # Light gray background for the entire chart
+                title_font=dict(size=20,color='white', family="Trebuchet MS"),  # Title font settings
+                legend_font=dict(color='white'),
+                font=dict(color='white')
             )
 
             #Bar graph
-            query_bar = f"SELECT SOLD_TO_NAME, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY SOLD_TO_NAME;"
+            query_bar = f"SELECT SOLD_TO_NAME, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY SOLD_TO_NAME;"
             df = fetch_data(query_bar)
-            df['color'] = df['CSI Average'].apply(lambda x: 'blue' if x > 14 else 'red')
+            df['color'] = df['CSI Average'].apply(lambda x: '#05D5FA' if x > 14 else '#ff7700')
 
             bar_fig = px.bar(df, 
                 x='SOLD_TO_NAME', 
                 y='CSI Average', 
-                color='color', 
-                color_discrete_map={'blue': 'blue', 'red': 'red'}, 
-                title="Customer Satisfaction Index Average by Ship To"
+                color='color',  # Use the color column for coloring
+                color_discrete_map={'#05D5FA': '#05D5FA', '#ff7700': '#ff7700'},  # Define color mapping
+                title="Customer Satisfaction Index by Ship To"
             )
-            bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == 'blue' else '<= 14'))
+            bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == '#05D5FA' else '<= 14'))
 
             bar_fig.update_layout(
                 xaxis_title='',  # Remove the x-axis label
@@ -495,14 +505,14 @@ def dashboard_callbacks(dash_app):
                 xaxis_tickangle=-45,
                 bargap=0.05,
                 plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-                paper_bgcolor='#0F2931',       # Light gray background for the entire chart
+                paper_bgcolor='#1B2131',       # Light gray background for the entire chart
                 title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
                 legend_font=dict(color='white'),
                 font=dict(color='white')
             )
             
             #Evolution bar graph
-            query_bar = f"SELECT MONTH, SOLD_TO_NAME, CUSTOMER_SATISFACTION_INDEX 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query};"
+            query_bar = f"SELECT MONTH, SOLD_TO_NAME, CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query};"
             df = fetch_data(query_bar)
             # Ajouter une colonne avec l'ordre des mois
             df['MONTH_ORDER'] = df['MONTH'].map(month_order)
@@ -512,7 +522,7 @@ def dashboard_callbacks(dash_app):
 
             bar_evolution_fig = px.bar(df_sorted, 
                 x='MONTH', 
-                y='CSI', 
+                y= 'CSI',            
                 color='SOLD_TO_NAME',  # Use the color column for coloring
                 barmode='group',
                 title="Customer Satisfaction Index by Ship To"
@@ -524,14 +534,15 @@ def dashboard_callbacks(dash_app):
                 xaxis_tickangle=-45,
                 bargap=0.05,
                 plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-                paper_bgcolor='#0F2931',       # Light gray background for the entire chart
+                paper_bgcolor='#1B2131',       # Light gray background for the entire chart
                 title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
                 legend_font=dict(color='white'),
                 font=dict(color='white')  
             ) 
         elif filter_value == 'office':
             #Line graph BY OFFICE
-            query_line = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE OFFICE;"
+            
+            query_line = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE;"
             df = fetch_data(query_line)
             # Ajouter une colonne avec l'ordre des mois
             df['MONTH_ORDER'] = df['MONTH'].map(month_order)
@@ -539,43 +550,56 @@ def dashboard_callbacks(dash_app):
             # Trier les données par ordre des mois
             df_sorted = df.sort_values(by='MONTH_ORDER')
 
-            line_fig = px.line(
+            area_fig = px.area(
                 df_sorted, 
                 x='MONTH', 
                 y='RES-RATE', 
-                color='OFFICE',
+                color='OFFICE',  # Colors will be assigned to each office
                 labels={'RES-RATE': 'Response Rate (%)'},
-                title="Response Rate by Office"
+                title="Response Rate by Office",
+                color_discrete_sequence=['#00BFFF', '#FFDC2D'],  # Custom color sequence
             )
-            line_fig.update_layout(
+
+            area_fig.update_layout(
                 xaxis_title='',  # Remove the x-axis label 
-                legend_title='Office'
+                legend_title='Office',
+                plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+                paper_bgcolor='#1B2131',       # Dark background for the entire chart
+                title_font=dict(size=20, color='white', family="Trebuchet MS"),  # Title font settings
+                legend_font=dict(color='white'),
+                font=dict(color='white')
             )
 
             #Bar graph BY OFFICE
-            query_bar = f"SELECT OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY OFFICE;"
+
+            query_bar = f"SELECT OFFICE, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY OFFICE;"
             df = fetch_data(query_bar)
-            df['color'] = df['CSI'].apply(lambda x: 'blue' if x > 14 else 'red')
+            df['color'] = df['CSI'].apply(lambda x: '#05D5FA' if x > 14 else '#ff7700')
 
             bar_fig = px.bar(df, 
                 x='OFFICE', 
                 y='CSI', 
                 color='color', 
-                color_discrete_map={'blue': 'blue', 'red': 'red'}, 
+                color_discrete_map={'#05D5FA': '#05D5FA', '#ff7700': '#ff7700'}, 
                 title="Customer Satisfaction Index Average by Office"
             )
-            bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == 'blue' else '<= 14'))
+            bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == '#05D5FA' else '<= 14'))
 
             bar_fig.update_layout(
                 xaxis_title='',  # Remove the x-axis label
                 yaxis_title='CSI',
                 legend_title='Color',
                 xaxis_tickangle=-45,
-                bargap=0.05  
+                bargap=0.05,
+                plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+                paper_bgcolor='#1B2131',       # Light gray background for the entire chart
+                title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+                legend_font=dict(color='white'),
+                font=dict(color='white') 
             )
             
             #Evolution bar graph BY OFFICE
-            query_bar = f"SELECT MONTH, OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH;"
+            query_bar = f"SELECT MONTH, OFFICE, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH;"
             df = fetch_data(query_bar)
             # Ajouter une colonne avec l'ordre des mois
             df['MONTH_ORDER'] = df['MONTH'].map(month_order)
@@ -587,19 +611,26 @@ def dashboard_callbacks(dash_app):
                 y='CSI', 
                 color='OFFICE',  # Use the color column for coloring
                 barmode='group',
-                title="Customer Satisfaction Index by Office"
+                title="Customer Satisfaction Index by Office",
+                color_discrete_sequence=['#00BFFF', '#ffaa17'],
             )
             bar_evolution_fig.update_layout(
                 xaxis_title='Month',
                 yaxis_title='Customer Satisfaction Index',
                 legend_title='Office',
                 xaxis_tickangle=-45,
-                bargap=0.05  
+                bargap=0.05,
+                plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
+                paper_bgcolor='#1B2131',       # Light gray background for the entire chart
+                title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
+                legend_font=dict(color='white'),
+                font=dict(color='white') 
+
             )    
 
 
 
-        return line_fig, bar_fig, pie_fig, treemap_fig, bar_evolution_fig, table_data
+        return area_fig, bar_fig, pie_fig, treemap_fig, bar_evolution_fig, table_data
 
     @dash_app.callback(
         Output("download-graphs-dataframe-xlsx", "data"),
@@ -620,7 +651,7 @@ def dashboard_callbacks(dash_app):
         prevent_initial_call=True
     )
     def export_graph_data(export_pie, export_line, export_bar, export_treemap, export_evolution_bar, export_comments,
-                        line_fig, bar_fig, pie_fig, treemap_fig, bar_evolution_fig, table_data,
+                        area_fig, bar_fig, pie_fig, treemap_fig, bar_evolution_fig, table_data,
                         filter_value, fiscal_year):
         
         # Déterminer quel bouton a été cliqué
@@ -651,19 +682,19 @@ def dashboard_callbacks(dash_app):
         if filter_value == 'office':
             filter_column = 'OFFICE'
             line_query = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE ORDER BY OFFICE;"
-            bar_query = f"SELECT OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY OFFICE;"
+            bar_query = f"SELECT OFFICE, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY OFFICE;"
             evolution_bar_query = f"SELECT MONTH, OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH;"
 
         elif filter_value == 'ship_to':
             filter_column = 'SOLD_TO_NAME'
             line_query = f"SELECT {filter_column}, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY {filter_column}"
-            bar_query = f"SELECT {filter_column}, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY {filter_column}"
+            bar_query = f"SELECT {filter_column}, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) AS 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY {filter_column}"
             evolution_bar_query = f"SELECT MONTH, {filter_column}, CUSTOMER_SATISFACTION_INDEX AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER {filter_column};"
 
         elif filter_value == 'global':
             filter_column = 'GLOBAL_CUSTOMER'
             line_query = f"SELECT {filter_column}, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RESPONSE_RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY {filter_column}"
-            bar_query = f"SELECT {filter_column}, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY {filter_column}"
+            bar_query = f"SELECT {filter_column}, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) AS 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY {filter_column}"
             evolution_bar_query = f"SELECT MONTH, {filter_column}, CUSTOMER_SATISFACTION_INDEX AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER BY {filter_column};"
 
         else:
@@ -678,7 +709,7 @@ def dashboard_callbacks(dash_app):
             filename = f"Pie_Graph_Data_{fiscal_year}.xlsx"
         
         elif button_id == "export-treemap":
-            treemap_query = f"SELECT GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
+            treemap_query = f"SELECT GLOBAL_CUSTOMER, AVG(CAST(CUSTOMER_SATISFACTION_INDEX AS FLOAT)) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
             df = fetch_data(treemap_query)
             filename = f"Treemap_Graph_Data_{fiscal_year}.xlsx"
         

@@ -1,5 +1,5 @@
 import json
-from flask import Flask, session, redirect, url_for, request, render_template, flash, send_from_directory, jsonify
+from flask import Flask, session, redirect, url_for, request, render_template, flash, send_from_directory, jsonify, send_file
 from dash import Dash, html, dcc, Output, Input, dash, State, MATCH, ALL, no_update
 import dash_bootstrap_components as dbc
 import dash_mantine_components as dmc
@@ -17,6 +17,8 @@ from db import insert_data
 import plotly.express as px
 import base64
 import io
+from io import BytesIO
+
 
 
 # Initialiser l'application Flask
@@ -45,7 +47,7 @@ def login():
             print("User Role After Login:*", session.get('role'),"*")
             return redirect(url_for('dashboard'))
         else:
-            flash('Identifiants incorrects.', 'danger')
+            flash('Incorrect Credentials', 'danger')
     
     return render_template('login.html')
 
@@ -85,14 +87,7 @@ dash_app.layout = dmc.MantineProvider(
     dcc.Location(id="url-redirect", refresh=True),
     html.Div(id='page-content'),
     dashboard_layout(),
-    # dcc.Store(id='user-privileges'),
-     
-    html.A("Se déconnecter", href="/logout"),
-    dmc.Button(
-        "GitHub",
-        leftSection=DashIconify(icon="radix-icons:github-logo", width=20),
-        rightSection=dmc.Badge("3", circle=True, color="gray"),
-    ),
+
     dcc.Interval(
         id='interval-component',
         interval=1000,  # 60 secondes
@@ -148,31 +143,7 @@ def submit_issue(n_clicks, text, image_path):
         
     return ""
 
-# Génération des cartes dynamiques
-# def generate_issue_cards_from_db(status):
-#     issues = get_issues(status)
-#     print(issues)  # Récupérer les réclamations depuis la base de données
-#     issue_cards = []
 
-#     for issue in issues:
-#         issue_id = issue[0]
-#         issue_text = issue[1]
-#         image_url = issue[2]
-#         date = issue[3]
-#         first_name = issue[4]
-#         last_name = issue[5]
-
-#         card = dbc.Card([
-#             dbc.CardBody([
-#                 html.H5(f"Issue {issue_id}"),
-#                 html.P(issue_text),
-#                 dbc.Button("Mark as resolved", id={'type': 'resolve-btn', 'index': issue_id}),
-#             ]),
-#         ], id={'type': 'issue-card', 'index': issue_id})  # ID dynamique pour chaque carte
-
-#         issue_cards.append(card)
-
-#     return issue_cards
 
 def generate_issue_cards_from_db(status):
     issues = get_issues(status)
@@ -202,8 +173,8 @@ def generate_issue_cards_from_db(status):
                                         html.P(issue_text, className="card-text"),
                                         html.Small(f"{date}", className="card-text text-muted"),
                                         html.Br(),
-                                        html.Span("Resolved", className="badge badge-success"),  # Badge pour les réclamations résolues
-                                    ]
+                                        html.Span("Resolved", className="badge badge-success", style={"color":"success"}),  # Badge pour les réclamations résolues
+                                    ], style={"background-color": "#131722"}
                                 ),
                                 className="col-md-auto",
                             ),
@@ -217,16 +188,18 @@ def generate_issue_cards_from_db(status):
                                         'right': '0',
                                         'top': '10px',
                                         'transform': 'translateY(-110%)',
+                                        "background-color": "#131722"
                                     },
                                     className="img-fluid rounded-start"
                                 ),
-                                style={'position': 'relative', 'width': '100%'},
+                                style={'position': 'relative', 'width': '100%',"background-color": "#131722"},
                                 className="col-md-auto"
                             ) if image_url else None
                         ],
                         className="g-0 d-flex align-items-center",
                     )
                 ], id={'type': 'issue-card', 'index': issue_id},
+                style={"background-color": "#131722"},
                 className="mb-3",
             )
         else:
@@ -242,9 +215,10 @@ def generate_issue_cards_from_db(status):
                                         html.Small(f"{date}", className="card-text text-muted"),
                                         html.Br(),
                                         dbc.Button("Mark as Resolved", id={'type': 'resolve-btn', 'index': issue_id}, n_clicks=0, color="success")
-                                    ]
+                                    ], style={"background-color": "#131722"}
                                 ),
-                                className="col-md-auto",
+                                style={"background-color": "#131722"},
+                                className="col-md-auto"
                             ),
                             dbc.Col(
                                 dbc.CardImg(
@@ -256,16 +230,19 @@ def generate_issue_cards_from_db(status):
                                         'right': '0',
                                         'top': '10px',
                                         'transform': 'translateY(-110%)',
+                                        "background-color": "#131722"
+                                        
                                     },
                                     className="img-fluid rounded-start"
                                 ),
-                                style={'position': 'relative', 'width': '100%'},
+                                style={'position': 'relative', 'width': '100%',"background-color": "#131722"},
                                 className="col-md-auto"
                             ) if image_url else None
                         ],
                         className="g-0 d-flex align-items-center",
                     )
                 ], id={'type': 'issue-card', 'index': issue_id},
+                style={"background-color": "#131722"},
                 className="mb-3",
             )
         
@@ -326,7 +303,9 @@ def mark_issue_resolved(n_clicks, button_id):
 @dash_app.callback(
     [Output('open-issues-button', 'style'),
     Output('open-modal-button', 'style'),
-    Output('user-management-div', 'children')],
+    Output('user-management-div', 'children'),
+    Output('user-guide-div', 'children')
+    ],
     [Input('url', 'pathname')]
 )
 def update_user_management_button(pathname):
@@ -338,13 +317,19 @@ def update_user_management_button(pathname):
         issues_button_style = {'display': 'inline-block'}
         # Ajoutez un lien qui redirige vers Flask
         return issues_button_style, report_issue_button_style, html.A(
-            dbc.Button("User Management", id="user-management-button", color='primary'),
+            dbc.Button("User Management", id="user-management-button", className="mr-2", style={"background-color": "#00b4ef", "border-color": "#00b4ef", "color": "black" , "width": "100%"}),
             href='/user_management'  # Lien vers la route Flask
+        ), html.A(
+            dbc.Button("Admin Guide", id="user-guide-link", style={"background-color": "#00b4ef", "border-color": "#00b4ef", "color": "black", "width": "100%"}),
+            href='/admin_guide'  # Lien vers la route Flask
         )
     elif role == 'user':
         report_issue_button_style = {'display': 'inline-block'}
 
-        return issues_button_style, report_issue_button_style, ''
+        return issues_button_style, report_issue_button_style, '', html.A(
+            dbc.Button("User Guide", id="user-guide-link", style={"background-color": "#00b4ef", "border-color": "#00b4ef", "color": "black", "width": "100%"}),
+            href='/user_guide'  # Lien vers la route Flask
+        )
     return ''
 
 
@@ -382,319 +367,6 @@ def check_privileges(pathname, n_intervals):
     
     return upload_style, edit_style, message, message_style
 
-# @dash_app.callback(
-#     [
-#         Output('line-graph', 'figure'),
-#         Output('bar-graph', 'figure'),
-#         Output('pie-graph', 'figure'),
-#         Output('treemap-graph', 'figure'),
-#         Output('bar-evolution-graph', 'figure'),
-#         Output('comments-table', 'data')  # Output to update the table
-
-#     ],
-#     [
-#         Input('filter-dropdown', 'value'),
-#         Input('fiscal-year-input-filter', 'value')
-#     ]
-# )
-
-# def update_graphs(filter_value, fiscal_year):
-#     user_privileges = session.get('privileges', [])
-
-#     fiscal_year_query = f"((FISCAL_YEAR = '{fiscal_year - 1}' and MONTH in ('OCTOBER', 'NOVEMBER', 'DECEMBER') ) OR (FISCAL_YEAR= '{fiscal_year}' and MONTH in ('JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER')))"
-
-#     #Pie graph
-#     query_pie = f"SELECT OVERALL_SATISFACTION, COUNT(OVERALL_SATISFACTION) AS 'Rating'FROM DATA WHERE OVERALL_SATISFACTION IS NOT NULL AND {fiscal_year_query} GROUP BY OVERALL_SATISFACTION;"
-#     df = fetch_data(query_pie)
-#     custom_colors = ['#BE5B2D', '#D5692A', '#EB8204', '#FC9A22', '#FDB55E']
-#     pie_fig = px.pie(df, names='OVERALL_SATISFACTION', values='Rating', title="Overall Satisfaction", color_discrete_sequence=custom_colors )
-#     pie_fig.update_layout(
-#         plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-#         paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-#         title_font=dict(size=20, color='white', family="Calibri"),  # Title font settings
-#         legend_font=dict(color='white'),
-#         font=dict(color='white')
-#     )
-    
-
-#     #Tree map
-#     query_treemap = f"SELECT GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
-#     df = fetch_data(query_treemap)
-#     df['color'] = df['CSI'].apply(lambda x: '#429EBD' if x > 14 else 'red')
-#     treemap_fig = px.treemap(df, path=['GLOBAL_CUSTOMER'], values='CSI',
-#         color='color',  # Use the color column for coloring
-#         color_discrete_map={'#429EBD': '#429EBD', 'red': 'red'},  # Define color mapping
-#         title="Customer Satisfaction Index Treemap")
-#     treemap_fig.update_layout(
-#         plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-#         paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-#         title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
-#         legend_font=dict(color='white'),
-#         font=dict(color='black')
-#     )
-#         # Query for the comments
-#     query_comments = f"SELECT OFFICE, FISCAL_YEAR, MONTH, GLOBAL_CUSTOMER, concat(FIRST_NAME, ' ',LAST_NAME) as name, ADDITIONNAL_COMMENTS from DATA WHERE ADDITIONNAL_COMMENTS is not null  AND {fiscal_year_query};"
-#     comments_df = fetch_data(query_comments)
-
-#     # Convert the DataFrame to a list of dictionaries for the DataTable
-#     table_data = comments_df.to_dict('records')
-
-#     if filter_value == 'global' and 'Filter by Global Customer' in user_privileges:
-#         #Line graph BY GLOBAL CUSTOMER
-#         query_line = f"SELECT GLOBAL_CUSTOMER, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
-
-#         df = fetch_data(query_line)
-
-#         line_fig = px.line(
-#             df, 
-#             x='GLOBAL_CUSTOMER', 
-#             y='RES-RATE', 
-#             labels={'RES-RATE': 'Response Rate (%)'},
-#             title="Response Rate by Global Customer"
-#         )
-#         line_fig.update_layout(
-#             xaxis_title='',  # Remove the x-axis label 
-#             plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-#             paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-#             title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
-#             legend_font=dict(color='white'),
-#             font=dict(color='white')
-#         )
-
-#         #Bar graph BY GLOBAL CUSTOMER
-#         query_bar = f"SELECT GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER;"
-#         df = fetch_data(query_bar)
-
-#         df['color'] = df['CSI Average'].apply(lambda x: '#429EBD' if x > 14 else 'red')
-
-#         bar_fig = px.bar(df, 
-#             x='GLOBAL_CUSTOMER', 
-#             y='CSI Average', 
-#             color='color',  # Use the color column for coloring
-#             color_discrete_map={'#429EBD': '#429EBD', 'red': 'red'},  # Define color mapping
-#             title="Customer Satisfaction Index by Global Customer"
-#         )
-#         bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == 'blue' else '<= 14'))
-
-#         bar_fig.update_layout(
-#             xaxis_title='',  # Remove the x-axis label 
-#             plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-#             paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-#             title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
-#             legend_font=dict(color='white'),
-#             font=dict(color='white')
-#         )
-#         #Evolution bar graph BY GLOBAL CUSTOMER
-#         query_bar = f"SELECT MONTH, GLOBAL_CUSTOMER, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY GLOBAL_CUSTOMER, MONTH ORDER BY MONTH;"
-#         df = fetch_data(query_bar)
-
-#         df['color'] = df['CSI'].apply(lambda x: 'blue' if x > 14 else 'red')
-
-#         bar_evolution_fig = px.bar(df, 
-#             x='MONTH', 
-#             y='CSI', 
-#             color='GLOBAL_CUSTOMER',  # Use the color column for coloring
-#             color_discrete_map={'blue': 'blue', 'red': 'red'},  # Define color mapping
-#             barmode='group',
-#             title="Customer Satisfaction Index by Global Customer"
-#         )
-#         bar_evolution_fig.update_layout(
-#             xaxis_title='',
-#             yaxis_title='Customer Satisfaction Index',
-#             legend_title='Global Customer',
-#             xaxis_tickangle=-45,
-#             bargap=0.05,
-#             plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-#             paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-#             title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
-#             legend_font=dict(color='white'),
-#             font=dict(color='white')
-#         )
-#     elif filter_value == 'ship_to' and 'Filter by Ship to' in user_privileges:
-#         #Line graph
-#         query_line = f"SELECT SOLD_TO_NAME, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY SOLD_TO_NAME;"
-#         df = fetch_data(query_line)
-#         line_fig = px.line(
-#             df, 
-#             x='SOLD_TO_NAME', 
-#             y='RES-RATE', 
-#             labels={'RES-RATE': 'Response Rate (%)'},
-#             title="Response Rate by Ship To"
-#         )
-#         line_fig.update_layout(
-#             xaxis_title='',  # Remove the x-axis label 
-#         )
-
-#         #Bar graph
-#         query_bar = f"SELECT SOLD_TO_NAME, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI Average' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY SOLD_TO_NAME;"
-#         df = fetch_data(query_bar)
-#         df['color'] = df['CSI Average'].apply(lambda x: 'blue' if x > 14 else 'red')
-
-#         bar_fig = px.bar(df, 
-#             x='SOLD_TO_NAME', 
-#             y='CSI Average', 
-#             color='color', 
-#             color_discrete_map={'blue': 'blue', 'red': 'red'}, 
-#             title="Customer Satisfaction Index Average by Ship To"
-#         )
-#         bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == 'blue' else '<= 14'))
-
-#         bar_fig.update_layout(
-#             xaxis_title='',  # Remove the x-axis label
-#             yaxis_title='CSI Average',
-#             legend_title='Color',
-#             xaxis_tickangle=-45,
-#             bargap=0.05,
-#             plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-#             paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-#             title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
-#             legend_font=dict(color='white'),
-#             font=dict(color='white')
-#         )
-        
-#         #Evolution bar graph
-#         query_bar = f"SELECT MONTH, SOLD_TO_NAME, CUSTOMER_SATISFACTION_INDEX 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} ORDER BY MONTH;"
-#         df = fetch_data(query_bar)
-#         bar_evolution_fig = px.bar(df, 
-#             x='MONTH', 
-#             y='CSI', 
-#             color='SOLD_TO_NAME',  # Use the color column for coloring
-#             barmode='group',
-#             title="Customer Satisfaction Index by Ship To"
-#         )
-#         bar_evolution_fig.update_layout(
-#             xaxis_title='Month',
-#             yaxis_title='Customer Satisfaction Index',
-#             legend_title='Ship To',
-#             xaxis_tickangle=-45,
-#             bargap=0.05,
-#             plot_bgcolor='rgba(0,0,0,0)',  # Transparent plot area background
-#             paper_bgcolor='#0F2931',       # Light gray background for the entire chart
-#             title_font=dict(size=20,color='white', family="Calibri"),  # Title font settings
-#             legend_font=dict(color='white'),
-#             font=dict(color='white')  
-#         ) 
-#     elif filter_value == 'office' and 'Filter by Office' in user_privileges:
-#         #Line graph BY OFFICE
-#         query_line = f"SELECT OFFICE, MONTH, COUNT(CUSTOMER_SATISFACTION_INDEX) * 100.0 / COUNT(*) AS 'RES-RATE' FROM DATA WHERE {fiscal_year_query} GROUP BY MONTH, OFFICE ORDER BY MONTH, OFFICE;"
-#         df = fetch_data(query_line)
-#         line_fig = px.line(
-#             df, 
-#             x='MONTH', 
-#             y='RES-RATE', 
-#             color='OFFICE',
-#             labels={'RES-RATE': 'Response Rate (%)'},
-#             title="Response Rate by Office"
-#         )
-#         line_fig.update_layout(
-#             xaxis_title='',  # Remove the x-axis label 
-#             legend_title='Office'
-#         )
-
-#         #Bar graph BY OFFICE
-#         query_bar = f"SELECT OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX is not null and {fiscal_year_query} GROUP BY OFFICE;"
-#         df = fetch_data(query_bar)
-#         df['color'] = df['CSI'].apply(lambda x: 'blue' if x > 14 else 'red')
-
-#         bar_fig = px.bar(df, 
-#             x='OFFICE', 
-#             y='CSI', 
-#             color='color', 
-#             color_discrete_map={'blue': 'blue', 'red': 'red'}, 
-#             title="Customer Satisfaction Index Average by Office"
-#         )
-#         bar_fig.for_each_trace(lambda t: t.update(name='> 14' if t.name == 'blue' else '<= 14'))
-
-#         bar_fig.update_layout(
-#             xaxis_title='',  # Remove the x-axis label
-#             yaxis_title='CSI',
-#             legend_title='Color',
-#             xaxis_tickangle=-45,
-#             bargap=0.05  
-#         )
-        
-#         #Evolution bar graph BY OFFICE
-#         query_bar = f"SELECT MONTH, OFFICE, AVG(CUSTOMER_SATISFACTION_INDEX) AS 'CSI' FROM DATA WHERE CUSTOMER_SATISFACTION_INDEX IS NOT NULL AND {fiscal_year_query} GROUP BY OFFICE, MONTH ORDER BY MONTH;"
-#         df = fetch_data(query_bar)
-#         bar_evolution_fig = px.bar(df, 
-#             x='MONTH', 
-#             y='CSI', 
-#             color='OFFICE',  # Use the color column for coloring
-#             barmode='group',
-#             title="Customer Satisfaction Index by Office"
-#         )
-#         bar_evolution_fig.update_layout(
-#             xaxis_title='Month',
-#             yaxis_title='Customer Satisfaction Index',
-#             legend_title='Office',
-#             xaxis_tickangle=-45,
-#             bargap=0.05  
-#         )    
-
-#     return line_fig, bar_fig, pie_fig, treemap_fig, bar_evolution_fig, table_data
-
-
-#############################################################################################################################
-#############################################################################################################################
-
-# def get_dropdown_options():
-#     user_privileges = session.get('privileges', [])
-    
-#     options = []
-#     if 'Filter by Global Customer' in user_privileges:
-#         options.append({'label': 'By Global Customer', 'value': 'global'})
-#     if 'Filter by Ship to' in user_privileges:
-#         options.append({'label': 'By Ship to', 'value': 'ship_to'})
-#     if 'Filter by Office' in user_privileges:
-#         options.append({'label': 'By Office', 'value': 'office'})
-
-#     return options
-
-# Callback pour mettre à jour les options du dropdown
-# def update_dropdown_options():
-#     user_privileges = session.get('privileges', [])
-#     print("User Privileges:", user_privileges)  # Debug print
-
-#     options = []
-
-#     if 'Filter by Global Customer' in user_privileges:
-#         options.append({'label': 'By Global Customer', 'value': 'global'})
-    
-#     if 'Filter by Ship to' in user_privileges:
-#         options.append({'label': 'By Ship to', 'value': 'ship_to'})
-    
-#     if 'Filter by Office' in user_privileges:
-#         options.append({'label': 'By Office', 'value': 'office'})
-
-#     print("Dropdown Options:", options)  # Debug print
-#     return options
-
-# @dash_app.callback(
-#     Output('filter-dropdown', 'options'),
-#     [Input('url', 'pathname')]
-# )
-# def update_dropdown(pathname):
-#     try:
-#         options = update_dropdown_options()
-#         print("Dropdown Options:", options)
-
-#         return options
-#     except Exception as e:
-#         print("Error in update_dropdown:", e)  # Log error
-#         return []
-
-###############################################################################################################################
-
-##################################################################################
-# @dash_app.callback(
-#     Output('url', 'href'),
-#     [Input('user-management-button', 'n_clicks')]
-# )
-
-# def redirect_to_user_management(n_clicks):
-#     if n_clicks:
-#         return '/user_management'  # URL de la page user_management
-#     return dash.no_update
 
 @app.route('/user_management', methods=['GET'])
 def user_management_search():
@@ -724,7 +396,9 @@ def user_management_search():
             user for user in users if
             search_query in user['EMAIL'].lower() or
             search_query in user['FIRST_NAME'].lower() or
-            search_query in user['LAST_NAME'].lower()
+            search_query in user['LAST_NAME'].lower() or
+            search_query in user['ROLE'].lower() or
+            search_query in user['PRIVILEGES'].lower()
         ]
         print("Filtered users:", filtered_users)
     else:
@@ -768,8 +442,6 @@ def edit_user(email):
     return render_template('edit_user.html', user=user, privileges_list=privileges_list)
 
 
-
-        
 
 
 @app.route('/delete_user/<email>', methods=['POST'])
@@ -833,6 +505,37 @@ def test_route():
 @app.route('/')
 def index():
     return redirect(url_for('login'))
+
+@app.route('/admin_guide')
+def admin_guide():
+    return render_template('admin_guide.html')
+@app.route('/user_guide')
+def user_guide():
+    return render_template('user_guide.html')
+
+@app.route('/download-template')
+def download_template():
+    # Create an Excel file with only column headers
+    output = BytesIO()  # A binary stream to hold the Excel file in memory
+
+    # Define the column headers
+    columns = ['OFFICE', 'FISCAL_YEAR', 'MONTH', 'SURVEY_GROUP', 'SOLD_TO', 'SOLD_TO_NAME', 'GLOBAL_CUSTOMER', 'FIRST_NAME','LAST_NAME','EMAIL','OVERALL_SATISFACTION','CUSTOMER_SERVICE_REPRESENTATIVE_SATISFACTION','EASE_OF_DOING_BUSINESS','CUSTOMER_SATISFACTION_INDEX']
+
+    # Create an empty DataFrame with just the headers
+    df = pd.DataFrame(columns=columns)
+
+    # Write the DataFrame to an Excel file
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Template')
+    
+    # Set the position to the beginning of the stream
+    output.seek(0)
+
+    # Send the file to the user as an attachment
+    return send_file(output, 
+                     download_name="excel_template.xlsx", 
+                     as_attachment=True, 
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 if __name__ == "__main__":
     app.run(debug=True)
