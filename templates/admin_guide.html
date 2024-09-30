@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Guide</title>
+  <link rel="stylesheet" href="styles.css">
+  
+  <style>
+    * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+}
+
+.container {
+  display: flex;
+}
+.container_nav {
+  display: flex;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: #1B2131;
+  padding: 20px;
+  color: white;
+}
+
+.sidebar h2 {
+  color: #fff;
+  margin-bottom: 20px;
+}
+
+.sidebar ul {
+  list-style-type: none;
+}
+
+.sidebar ul li {
+  margin-bottom: 10px;
+}
+
+.sidebar ul li a {
+  color: #ddd;
+  text-decoration: none;
+  font-size: 18px;
+  display: block;
+}
+
+.sidebar ul li a:hover {
+  background-color: #575757;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+}
+
+section {
+  margin-bottom: 40px;
+}
+
+section h2 {
+  margin-bottom: 10px;
+  color: #333;
+}
+
+section p {
+  margin-bottom: 10px;
+}
+
+.rules {
+  list-style-type: none; /* Remove default list styling */
+  padding-left: 0;
+}
+
+.rules li {
+  background-color: #f9f9f9; /* Light gray background for readability */
+  margin-bottom: 10px; /* Space between each rule */
+  padding: 10px; /* Padding inside each rule */
+  border-left: 4px solid #00BFFF; /* Blue highlight on the left side */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Slight shadow for emphasis */
+}
+
+.rules li strong {
+  color: #333; /* Strong contrast for important text */
+}
+
+.rules li code {
+  background-color: #eee;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 90%;
+  color: #d6336c; /* Highlighted code style */
+}
+/* Custom Navbar Styling */
+.navbar-custom {
+  height: 80px;
+  background-color: #1B2131;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  width: 1550px;
+}
+.navbar-custom .back-icon {
+    font-size: 20px; /* Larger size for the back icon */
+    color: white;
+    margin-right: 15px;
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  color: white;
+  text-decoration: none;
+}
+
+.navbar-brand img {
+  height: 48px;
+  margin-right: 10px;
+}
+
+.navbar-brand i {
+  font-size: 24px;
+  color: white;
+  margin-right: 10px;
+}
+
+.navbar-text {
+  font-size: 24px;
+  color: white;
+  margin-left: auto;
+  margin-right: 1100px;
+}
+
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="navbar navbar-custom">
+        <!-- Back Icon and Logo -->
+        <a class="navbar-brand" href="/dashboard">
+            <i class="fas fa-arrow-left back-icon"></i>          
+            <img src="/assets/backlogo.png" alt="Company Logo"> <!-- Company logo -->
+        </a>
+        <span class="navbar-text">Admin Guide</span>
+    </nav>
+  </div>
+  <div class="container_nav">
+    <!-- Sidebar Menu -->
+    <nav class="sidebar">
+      <ul>
+        <li><a href="#section2">Getting Started</a></li>
+        <li><a href="#section3">Navigation Bar</a></li>
+        <li><a href="#section3">Importing Data</a></li>
+        <li><a href="#section5">Editing Data</a></li>
+        <li><a href="#section6">Exporting Graphs</a></li>
+        <li><a href="#section7">Issues</a></li>
+        <li><a href="#section8">User Management Center</a></li>
+        <li><a href="#section9">Excel File Criteria</a></li>
+
+
+
+      </ul>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="content">
+      <section id="section1">
+        <p>Hello Admin!<br><br>Throughout this guide, we will explain different functionalities, features and interface components, in addition to how to use them.</p>
+      </section>
+
+      <section id="section2">
+        <h2>Getting Started</h2>
+        <p>Upon logging in to the dashboard, we're presented with different graphs visualizing data, and a navigation bar right at the top of the page.<br> Since you're an admin, you get admin buttons and functionalities, which we will explain in the upcoming sections.</p>
+        <img src="assets/11.png" alt="Getting Started Image" style="width: 60%;">
+      </section>
+
+      <section id="section3">
+        <h2>Navigation Bar</h2>
+        <p>As an admin, your navigation bar contains the buttons presented in the image bellow.</p>
+        <img src="assets/2.png" style="width: 40%;">
+      </section>
+
+      <section id="section4">
+        <h2>Importing Data</h2>
+        <p>Data should be imported through an excel file that checks all the necessary requirements (See <a href="#section9">Excel File Criteria</a>) <b>New data should be imported regurarly, in the beginning of every month</b>. If the data is not imported on time, a reminder will occure.</p>
+        <img src="assets/10.png" style="width: 80%;">
+
+      </section>
+
+      <section id="section5">
+        <h2>Editing Data</h2>
+        <p>To modify the data, edit the content of the table columns. Remember to click <b>'Enter'</b> on the keyboard once you finish editing a column.</p>
+
+        <img src="assets/3.png" style="width: 60%;">
+      </section>
+      <section id="section6">
+        <h2>Exporting Graphs</h2>
+        <img src="assets/4.png" style="width: 50%;">
+      </section>
+      <section id="section7"></section>
+        <h2>Issues</h2>
+        <p>Through this button on the navigation bar, <img src="assets/5.png" style="width: 7%; vertical-align:middle;"> you are able to view the issues previously reported by the users.</p>
+        <img src="assets/6.png" style="width: 50%;">
+      </section>
+      <section id="section8"></section>
+        <h2>User Management Center</h2>
+        <p><br>Open the user management center through this button <img src="assets/9.png" style="width: 20%; vertical-align:middle;"> on the side menu. As an admin, you can manage existing users by editing the users' information, roles and privileges, delete users or add new ones.</p>
+        <img src="assets/8.png" style="width: 80%;">
+      </section>
+      <section id="section9"></section>
+            <h2>Excel File Criteria</h2>
+            <p><br>As mentioned in the <a href="#section3">Importing data</a> section, the excel file that contains data should comply to certain criteria.<br><br></p>
+            <p>Please ensure that your Excel file complies with the following rules:<br><br></p>
+            <ul class="rules">
+              <li><strong>Column Names:</strong> Column names in Excel <strong>must match exactly</strong> the column names in the template provided in the end of this section. This includes upper/lower case.<br><br>Avoid using special characters in column names, such as @, #, !, etc.<br><br>No spaces in column names, replace with “_”.</li><br>
+              <li><strong>Data Formatting:</strong> If you have date columns for example, make sure that the date values in Excel are properly formatted.</li><br>
+              <li><strong>Number of Columns:</strong> The Excel file should have the same number of columns as the template</li><br>
+              <li><strong>Column Order:</strong> Column order is generally not important if the names match.</li><br>
+              <li><strong>File Format:</strong> Ensure that the Excel file is in a <strong>.xls</strong> or <strong>.xlsx</strong> format. Other file formats will not be supported.</li><br>
+              <li><strong>No Merged Cells:</strong> Merged cells are not supported. If you have merged cells in your Excel file, it will be rejected by the platform.</li><br>
+            </ul>
+            <a href="/download-template" class="download-link"><strong>Download Excel Template</strong></a>
+
+      </section>      
+    </div>
+  </div>
+</body>
+</html>

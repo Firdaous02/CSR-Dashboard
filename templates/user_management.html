@@ -9,56 +9,116 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
-    <!-- <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table, th, td {
-            border: 1px solid black;
-        }
-        th, td {
-            padding: 10px;
-            text-align: left;
-        }
-        th {
-            background-color: #f2f2f2;
-        }
-    </style> -->
     <style>
-        table {
-            width: 100%;
-            table-layout: auto; /* Permet à la table de s'ajuster en fonction du contenu */
+        /* Custom styling for the navbar */
+        .navbar-custom {
+            height: 97px; /* Increased height */
+            background-color: #1B2131; /* Dark background */
+            margin-top: 1px; /* Add space from the top of the page */
+            margin-left: 1px; /* Add space from the left */
+            margin-right: 1px; /* Add space from the right */
+            border-radius: 6px; /* Rounded corners for a modern look */
+            padding: 0 20px; /* Add padding inside the navbar */
         }
-        /* td {
-            padding: 8px; /* Ajoute un peu d'espace autour du texte */
-            /* white-space: normal; Permet au texte de s'enrouler sur plusieurs lignes */
-            /* vertical-align: top; Aligne le texte en haut pour les cellules avec plus de contenu */
-            /* height: auto; */
-        /* } */ 
-        .table th.action-col, .table td.action-col {
-            width: 150px; /* Ajustez cette valeur selon vos besoins */
-            text-align: center; /* Centrer les boutons */
+
+        .navbar-custom .navbar-brand {
+            font-size: 26px; /* Larger font size for the text */
+            color: white;
+            display: flex;
+            align-items: center;
         }
-        .table td {
-            vertical-align: middle; /* Centrer verticalement le contenu des cellules */
+
+        .navbar-custom .navbar-text {
+            font-size: 26px; /* Larger text size for the User Management Center */
+            color: white;
+            margin-left: 0px;
+            margin-right: 930px; 
         }
+
+        .navbar-custom .back-icon {
+            font-size: 20px; /* Larger size for the back icon */
+            color: white;
+            margin-right: 15px;
+        }
+
+        body {
+            padding: 20px; /* General padding for the body */
+            background-color: #e3e3e3; /* Set background color */
+        }
+
+        .navbar-custom .navbar-brand img {
+            height: 64px; /* Increased image height */
+            width: auto; /* Maintain aspect ratio, or you can specify width if needed */
+            margin-right: 5px; /* Space between the logo and the text */
+        }
+
+        .table {
+            box-shadow: 0px 3px 10px -2px rgba(0, 0, 0, 0.2); /* Add shadow to table */
+        }
+
+        .table thead {
+            background-color: #1B2131;
+        }
+
+        .table thead th {
+            color: white; /* To ensure text is readable, make the text white */
+        }
+        .table tbody tr:nth-child(odd) {
+            background-color: #ffffff; /* White for odd rows */
+        }
+
+        .table tbody tr:nth-child(even) {
+            background-color: #f3f3f3; /* Light grey for even rows */
+        }
+        .btn-custom {
+            background-color: #00BFFF;
+            color: white;
+            border: none;
+        }
+
+        .btn-custom:hover {
+            background-color: #00A1E0;
+        }
+
+        .btn-warning {
+            background-color: #1B2131; /* Edit button color */
+            color: white;
+            border: none;
+        }
+
+        .btn-warning:hover {
+            background-color: #141a28; /* Darker shade for hover effect */
+        }
+
+        .btn-danger {
+            background-color: #ff7700; /* Delete button color */
+            color: white;
+            border: none;
+        }
+
+        .btn-danger:hover {
+            background-color: #e66300; /* Darker shade for hover effect */
+        }
+
+        .search-bar {
+            width: 500px; /* Adjust this value to make the search bar longer */
+        }
+         
     </style>
 </head>
 <body>
-    <h1>User Management</h1>
-    
-    <!-- Form to Add/Edit Users -->
-    <!-- <form action="" method="post">
-        <input type="text" name="email" placeholder="Email" required>
-        <input type="text" name="first_name" placeholder="First Name" required>
-        <input type="text" name="last_name" placeholder="Last Name" required>
-        <select name="role">
-            <option value="admin">Admin</option>
-            <option value="user">User</option>
-        </select>
-        <button type="submit">Add/Edit User</button>
-    </form> -->
+
+    <!-- Navigation Bar with Back Icon, Logo, and "User Management Center" -->
+    <nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+        <div class="container-fluid">
+            <!-- Back Icon to return to home -->
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fas fa-arrow-left back-icon"></i>
+                <img src="/assets/logo.png" alt="Company Logo">
+            </a>
+            <span class="navbar-text">User Management Center</span>
+        </div>
+    </nav>
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div>
@@ -68,34 +128,34 @@
             </div>
         {% endif %}
     {% endwith %}
-
+    <!-- User Management Page Content -->
     <div class="container mt-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-4">User List</h2>
-        <form class="form-inline" method="GET" action="/user_management">
-            <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search" name="search" value="{{ request.args.get('search', '') }}">
-            <button class="btn btn-outline-success my-2 my-sm-0" type="submit"><i class="fas fa-search"></i> Search</button>
-        </form>
-        <a href="/add_user" class="btn btn-primary">
-            <i class="fas fa-user-plus"></i> Add User
-        </a>
+            <form class="form-inline" method="GET" action="/user_management">
+                <input class="form-control mr-sm-2 search-bar" type="search" placeholder="Search" aria-label="Search" name="search" value="{{ request.args.get('search', '') }}">
+                <button class="btn btn-custom my-2 my-sm-0" type="submit"><i class="fas fa-search"></i> Search</button>
+            </form>
+            <a href="/add_user" class="btn btn-custom">
+                <i class="fas fa-user-plus"></i> Add User
+            </a>
         </div>
-    {% if users|length == 0 %}
+        
+        {% if users|length == 0 %}
         <!-- Message if no users -->
         <div class="alert alert-info" role="alert">
             <i class="fas fa-info-circle"></i> No users found.
         </div>
-    {% else %}
+        {% else %}
         <!-- Table if users exist -->
-        <table class="table table-striped table-bordered" >
-            <thead class="thead-dark" style="text-align: center;">
+        <table class="table table-striped table-bordered">
+            <thead>
                 <tr>
                     <th>Email</th>
                     <th style="width: 150px;">First Name</th>
                     <th style="width: 150px;">Last Name</th>
                     <th>Role</th>
-                    <th>Privileges</th> <!-- Added column for Privileges -->
-                    <th style="width: 190px;">Action</th>
+                    <th>Privileges</th>
+                    <th style="width: 190px; text-align: center;">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -105,13 +165,9 @@
                     <td>{{ user.FIRST_NAME }}</td>
                     <td>{{ user.LAST_NAME }}</td>
                     <td>{{ user.ROLE }}</td>
-                    <td>
-                        <!-- Display privileges as a comma-separated list -->
-                        {{ user.PRIVILEGES|replace(',', ', ') }}
-                    </td>
-                    <td style="text-align: center;">
-                        <!-- Edit button for each user -->
-                        <form action="/edit_user/{{ user.EMAIL }}" method="get" style="display:inline;" >
+                    <td>{{ user.PRIVILEGES|replace(',', ', ') }}</td>
+                    <td class="text-center">
+                        <form action="/edit_user/{{ user.EMAIL }}" method="get" style="display:inline;">
                             <button type="submit" class="btn btn-sm btn-warning"><i class="fas fa-edit"></i> Edit</button>
                         </form>
                         <button type="button" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#confirmDeleteModal" data-email="{{ user.EMAIL }}"><i class="fas fa-trash"></i> Delete</button>
@@ -120,8 +176,9 @@
                 {% endfor %}
             </tbody>
         </table>
-    {% endif %}
-</div>
+        {% endif %}
+    </div>
+
     <!-- Confirmation Modal -->
     <div class="modal fade" id="confirmDeleteModal" tabindex="-1" role="dialog" aria-labelledby="confirmDeleteModalLabel" aria-hidden="true">
         <div class="modal-dialog" role="document">
@@ -151,10 +208,9 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
-        // Set up the modal to include the user email
         $('#confirmDeleteModal').on('show.bs.modal', function (event) {
-            var button = $(event.relatedTarget) // Button that triggered the modal
-            var email = button.data('email') // Extract info from data-* attributes
+            var button = $(event.relatedTarget)
+            var email = button.data('email')
             var modal = $(this)
             modal.find('#userEmail').val(email)
             modal.find('#deleteForm').attr('action', '/delete_user/' + encodeURIComponent(email))

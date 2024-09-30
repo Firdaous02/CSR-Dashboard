@@ -6,71 +6,325 @@
     <title>Add User</title>
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+/* 64ac15 */
+*,
+*:before,
+*:after {
+  box-sizing: border-box;
+}
+body {
+  padding: 1em;
+  font-family: 'Trebuchet MS';
+  font-size: 15px;
+  color: #b9b9b9;
+  background-color: #e3e3e3;
+}
+h1 {
+  color: #b9b9b9;
+  font-family: 'Trebuchet MS';
+  font-weight: bold;
+  font-size: 3em;
+  text-align: center;
+  /* margin-bottom: 1em; */
+}
+h4 {
+  color: #00bfff;
+  font-family: 'Trebuchet MS';
+}
+.icon.back-icon {
+  font-size: 20px; /* Larger size for the back icon */
+  color: white;
+  margin-right: 15px;
+}
+input,
+input[type="radio"] + label,
+input[type="checkbox"] + label:before
+ {
+  width: 100%;
+  padding: 1em;
+  line-height: 1.4;
+  background-color: #f9f9f9;
+  border: 1px solid #e5e5e5;
+  border-radius: 3px;
+  -webkit-transition: 0.35s ease-in-out;
+  -moz-transition: 0.35s ease-in-out;
+  -o-transition: 0.35s ease-in-out;
+  transition: 0.35s ease-in-out;
+  transition: all 0.35s ease-in-out;
+}
+input:focus {
+  outline: 0;
+  border-color: #00bfff;
+}
+input:focus + .input-icon i {
+  color: #00bfff;
+}
+input:focus + .input-icon:after {
+  border-right-color: #00bfff;
+}
+input[type="radio"] {
+  display: none;
+}
+input[type="radio"] + label,
+select {
+  display: inline-block;
+  width: 50%;
+  text-align: center;
+  float: left;
+  border-radius: 0;
+}
+input[type="radio"] + label:first-of-type {
+  border-top-left-radius: 3px;
+  border-bottom-left-radius: 3px;
+  
+}
+input[type="radio"] + label:last-of-type {
+  border-top-right-radius: 3px;
+  border-bottom-right-radius: 3px;
+}
+input[type="radio"] + label i {
+  padding-right: 0.4em;
+  color: #3a3939;
+}
+input[type="radio"]:checked + label,
+input:checked + label:before,
+select:focus,
+select:active {
+  background-color: #00bfff;
+  color: #fff;
+  border-color: #00bfff;
+}
+input[type="checkbox"] {
+  display: none;
+}
+input[type="checkbox"] + label {
+  position: relative;
+  display: block;
+  padding-left: 1.6em;
+  padding-right: 2em;
+  color: #3a3939;
+}
+input[type="checkbox"] + label:before {
+  position: absolute;
+  top: 0.2em;
+  left: 0;
+  display: block;
+  width: 1em;
+  height: 1em;
+  padding: 0;
+  content: "";
+}
+
+button{
+    background-color: #00bfff;
+    color: #fff;
+    border: none;
+    padding: 0.5em 2em;
+    cursor: pointer;
+    border-radius: 3px;
+    width: 100%;
+    height: 3em;
+    font-family: 'Trebuchet MS';
+    font-size: 1.1em;
+    text-align: center;
+}
+
+.input-group {
+  margin-bottom: 1em;
+  zoom: 1;
+}
+.input-group:before,
+.input-group:after {
+  content: "";
+  display: table;
+}
+.input-group:after {
+  clear: both;
+}
+.input-group-icon {
+  position: relative;
+}
+.input-group-icon input {
+  padding-left: 4.4em;
+}
+.input-group-icon .input-icon {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3.4em;
+  height: 3.4em;
+  line-height: 3.4em;
+  text-align: center;
+  pointer-events: none;
+}
+.input-group-icon .input-icon:after {
+  position: absolute;
+  top: 0.6em;
+  bottom: 0.6em;
+  left: 3.4em;
+  display: block;
+  border-right: 1px solid #e5e5e5;
+  content: "";
+  -webkit-transition: 0.35s ease-in-out;
+  -moz-transition: 0.35s ease-in-out;
+  -o-transition: 0.35s ease-in-out;
+  transition: 0.35s ease-in-out;
+  transition: all 0.35s ease-in-out;
+}
+.input-group-icon .input-icon i {
+  -webkit-transition: 0.35s ease-in-out;
+  -moz-transition: 0.35s ease-in-out;
+  -o-transition: 0.35s ease-in-out;
+  transition: 0.35s ease-in-out;
+  transition: all 0.35s ease-in-out;
+}
+.container {
+  max-width: 38em;
+  padding: 1em 3em 2em 3em;
+  margin: 0em auto;
+  background-color: #fff;
+  border-radius: 4.2px;
+  box-shadow: 0px 3px 10px -2px rgba(0, 0, 0, 0.2);
+}
+.row {
+  zoom: 1;
+}
+.row:before,
+.row:after {
+  content: "";
+  display: table;
+}
+.row:after {
+  clear: both;
+}
+.col-half {
+  padding-right: 10px;
+  float: left;
+  width: 50%;
+}
+.col-half:last-of-type {
+  padding-right: 0;
+}
+.col-third {
+  padding-right: 10px;
+  float: left;
+  width: 33.33333333%;
+}
+.col-third:last-of-type {
+  padding-right: 0;
+}
+@media only screen and (max-width: 540px) {
+  .col-half {
+    width: 100%;
+    padding-right: 0;
+  }
+}
+
+    </style>
 </head>
 <body>
-    <div class="container mt-5">
+  <div class="icon">
+    <a class="navbar-brand" href="/user_management">
+      <i class="fas fa-arrow-left back-icon"></i>
+    </a>
+  </div>
+    <div class="container">
         <h1>Add User</h1>
         <form method="post">
-            <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" class="form-control" id="email" name="email" required>
+            <div class="row">
+            <h4>Account</h4>
             </div>
-            <div class="form-group">
-                <label for="first_name">First Name</label>
-                <input type="text" class="form-control" id="first_name" name="first_name" required>
+            <div class="row">
+            <div class="col-half">
+                <div class="input-group input-group-icon">
+                    <input type="text" id="first_name" name="first_name" placeholder="First Name" required />
+                    <div class="input-icon">
+                      <i class="fa fa-user"></i>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="last_name">Last Name</label>
-                <input type="text" class="form-control" id="last_name" name="last_name" required>
+            <div class="col-half">
+                <div class="input-group input-group-icon">
+                    <input type="text" id="last_name" name="last_name" placeholder="Last Name" required />
+                    <div class="input-icon">
+                    <i class="fa fa-user"></i>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="role">Role</label>
-                <select class="form-control" id="role" name="role">
-                    <option value="admin">Admin</option>
-                    <option value="user">User</option>
-                </select>
+        </div>
+        <div class="row">
+            <div class="input-group input-group-icon">
+                <input type="email" id="email" name="email" placeholder="Email Address" required />
+                <div class="input-icon">
+                    <i class="fa fa-envelope"></i>
+                </div>
             </div>
-            <!-- Password and Confirm Password -->
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" class="form-control" required>
+        
+            <div class="input-group input-group-icon">
+                <input type="password" id="password" name="password" placeholder="Password" required/>
+                <div class="input-icon">
+                  <i class="fa fa-key"></i>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="confirm_password">Confirm Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+            <div class="input-group input-group-icon">
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm Password" required/>
+                <div class="input-icon">
+                  <i class="fa fa-key"></i>
+                </div>
             </div>
+        </div>
+
+        <div class="row">
+            <h4>Role</h4>
+            <div class="input-group">
+                <input id="admin" type="radio" name="role" value="admin" />
+                <label for="admin">Admin</label>
+                <input id="user" type="radio" name="role" value="user" />
+                <label for="user">User</label>
+            </div>
+        </div>
 
             <!-- Section pour les privilèges -->
-            <div class="form-group">
-                <label>Privileges</label><br>
-                <div class="form-check">
-                    <input type="checkbox" id="privilege1" name="privileges" value="Import Data" class="form-check-input">
-                    <label for="privilege1" class="form-check-label">Import Data</label>
-                </div>
-                <div class="form-check">
-                    <input type="checkbox" id="privilege2" name="privileges" value="Edit Data" class="form-check-input">
-                    <label for="privilege2" class="form-check-label">Edit Data</label>
-                </div>
-            </div>
+        <div class="row">
+            <h4>Privileges</h4>
+            <div class="input-group">
+                <input type="checkbox" id="privilege1" name="privileges" value="Import Data" />
+                <label for="privilege1">Import Data</label>
 
-            <!-- Section pour les filtres -->
-            <div class="form-group">
-                <label>Filters</label><br>
-                <div class="form-check">
-                    <input type="checkbox" id="filter1" name="privileges" value="Filter by Global Customer" class="form-check-input">
-                    <label for="filter1" class="form-check-label">Filter by Global Customer</label>
-                </div>
-                <div class="form-check">
-                    <input type="checkbox" id="filter2" name="privileges" value="Filter by Ship to" class="form-check-input">
-                    <label for="filter2" class="form-check-label">Filter by Ship to</label>
-                </div>
-                <div class="form-check">
-                    <input type="checkbox" id="filter3" name="privileges" value="Filter by Office" class="form-check-input">
-                    <label for="filter3" class="form-check-label">Filter by Office</label>
-                </div>
+                <input type="checkbox" id="privilege2" name="privileges" value="Edit Data">
+                <label for="privilege2">Edit Data</label>
+
+                <input type="checkbox" id="privilege3" name="privileges" value="No privilege">
+                <label for="privilege3">No privilege</label>
             </div>
-            <button type="submit" class="btn btn-primary">Add User</button>
+        </div>
+        <div class="row">
+            <button type="submit">Add User</button>
+        </div>
         </form>
     </div>
+    <script>
+      const privilege1 = document.getElementById('privilege1');
+      const privilege2 = document.getElementById('privilege2');
+      const privilege3 = document.getElementById('privilege3');
+  
+      // When "No privilege" is checked, uncheck other checkboxes
+      privilege3.addEventListener('change', function() {
+          if (this.checked) {
+              privilege1.checked = false;
+              privilege2.checked = false;
+          }
+      });
+  
+      // When either "Import Data" or "Edit Data" is checked, uncheck "No privilege"
+      [privilege1, privilege2].forEach(priv => {
+          priv.addEventListener('change', function() {
+              if (this.checked) {
+                  privilege3.checked = false;
+              }
+          });
+      });
+  </script>
 </body>
 </html>
