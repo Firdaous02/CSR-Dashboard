@@ -1,6 +1,6 @@
 **CSR-Dashboard: Customer Service Web Application**
 
-This project is a web application developed during my internship at TE Connectivity.
+This project is a web application developed during my internship.
 
 To Configure the Database Connection:
 1. Go to the db.py file in the project directory.
