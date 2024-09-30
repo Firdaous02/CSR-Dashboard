@@ -94,10 +94,6 @@ dash_app.layout = dmc.MantineProvider(
         n_intervals=0
     )
     
-    # dbc.Row(
-    #     dbc.Col(html.Div(id='session-info'), width={"size": 6, "offset": 3}),
-    # ),
-    # dcc.Location(id='url', refresh=False),
 ])
 )
 dashboard_callbacks(dash_app)
@@ -286,19 +282,6 @@ def mark_issue_resolved(n_clicks, button_id):
     # Retourne un message ou met à jour la carte après résolution
     return f"Issue {issue_id} marked as resolved"
 
-
-# #session
-# @dash_app.callback(
-#     Output('session-info', 'children'),
-#     [Input('url', 'pathname')]
-# )
-# def check_session(pathname):
-#     # Vérifier la présence de la clé 'role' dans la session
-#     role = session.get('role')
-#     if role:
-#         return f"Session Role: {role}"
-#     else:
-#         return "No session role found."
 
 @dash_app.callback(
     [Output('open-issues-button', 'style'),
