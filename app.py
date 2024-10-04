@@ -23,7 +23,7 @@ from io import BytesIO
 
 # Initialiser l'application Flask
 app = Flask(__name__)
-app.secret_key = 'votre_cle_secrete'  # Nécessaire pour les sessions
+app.secret_key = 'My_53cr37_K3y_15_v3ry_53cur3_&_v3ry_d3mur3'
 
 
 # Route de la page de connexion
